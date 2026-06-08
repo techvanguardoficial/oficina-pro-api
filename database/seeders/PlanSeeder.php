@@ -25,7 +25,7 @@ class PlanSeeder extends Seeder
                 'max_orders' => 50, // limite de OS abertas por mês
                 'max_parts_for_order' => 3,
                 'max_services_for_order' => 3,
-                'max_stock_quantity' => null,
+                'max_stock_quantity' => 100,
                 'has_advanced_reports' => false,
                 'has_api_access' => false,
                 'has_priority_support' => false,

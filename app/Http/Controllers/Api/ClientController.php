@@ -18,11 +18,21 @@ class ClientController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         //$this->authorizePermission('view_clients');
 
-        $clients = Client::with(['address', 'phone', 'vehicles'])->paginate(15);
+        $query = Client::with(['address', 'phone', 'vehicles']);
+
+        if ($request->filled('search')) {
+            $term = $request->input('search');
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                  ->orWhere('lastname', 'like', "%{$term}%");
+            });
+        }
+
+        $clients = $query->paginate($request->input('per_page', 15));
         return response()->json($clients);
     }
 

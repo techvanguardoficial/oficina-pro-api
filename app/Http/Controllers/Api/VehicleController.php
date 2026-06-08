@@ -16,12 +16,17 @@ class VehicleController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         //$this->authorizePermission('view_vehicles');
 
-        $vehicles = Vehicle::with(['client', 'carModel', 'company'])
-            ->paginate(15);
+        $query = Vehicle::with(['client', 'carModel', 'company']);
+
+        if ($request->filled('search')) {
+            $query->where('placa', 'like', '%' . $request->input('search') . '%');
+        }
+
+        $vehicles = $query->paginate($request->input('per_page', 15));
         return response()->json($vehicles);
     }
 

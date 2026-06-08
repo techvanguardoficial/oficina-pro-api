@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\IncomeTypeController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\AbacatePayWebhookController;
 use App\Http\Controllers\ClientApp\AuthController as ClientAuthController;
 use App\Http\Controllers\ClientApp\VehicleController as ClientVehicleController;
@@ -120,6 +121,10 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('stocks', StockController::class);
         Route::get('transactions', [TransactionController::class, 'summary']);
         Route::get('transactions/period', [TransactionController::class, 'period']);
+
+        Route::get('dashboard/top-vehicle-models', [DashboardController::class, 'topVehicleModels']);
+        Route::get('dashboard/top-clients', [DashboardController::class, 'topClients']);
+        Route::get('dashboard/in-progress-orders', [DashboardController::class, 'inProgressOrders']);
     });
 
 });
