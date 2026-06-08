@@ -18,7 +18,7 @@ class ExpenseController extends Controller
     {
         //$this->authorizePermission('view_expense');
 
-        $expenses = Expense::paginate(20);
+        $expenses = Expense::with('type')->paginate(20);
         return response()->json($expenses);
     }
 
@@ -30,9 +30,10 @@ class ExpenseController extends Controller
         //$this->authorizePermission('create_expense');
 
         $validated = $request->validate([
-            'description' => 'required|string|max:255',
+            'expense_types_id' => 'required|integer|exists:expense_types,id',
             'value' => 'required|numeric|min:0.01',
             'date' => 'required|date',
+            'info' => 'required|string|max:255',
         ]);
 
         // Get company from authenticated user
@@ -64,9 +65,10 @@ class ExpenseController extends Controller
         $this->authorizeCompany($expense);
 
         $validated = $request->validate([
-            'description' => 'sometimes|string|max:255',
+            'expense_types_id' => 'sometimes|integer|exists:expense_types,id',
             'value' => 'sometimes|numeric|min:0.01',
             'date' => 'sometimes|date',
+            'info' => 'sometimes|string|max:255',
         ]);
 
         $expense->update($validated);

@@ -12,118 +12,64 @@
           "name": "Register",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"company_name\": \"Oficina ABC\",\n  \"company_fantasy_name\": \"Oficina ABC\",\n  \"company_cnpj\": \"12345678000190\",\n  \"company_email\": \"contato@oficinaabc.com.br\",\n  \"company_phone\": \"1132221234\",\n  \"user_name\": \"João Silva\",\n  \"user_email\": \"joao@oficinaabc.com.br\",\n  \"user_phone\": \"11987654321\",\n  \"user_password\": \"Senha123!\",\n  \"user_password_confirmation\": \"Senha123!\"\n}"
             },
-            "url": {
-              "raw": "{{base_url}}/v1/register",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "register"]
-            }
+            "url": { "raw": "{{base_url}}/v1/register", "host": ["{{base_url}}"], "path": ["v1", "register"] }
           }
         },
         {
           "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["var json = pm.response.json();", "if (json.token) { pm.collectionVariables.set('token', json.token); }"],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"joao@oficinaabc.com.br\",\n  \"password\": \"Senha123!\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/login",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "login"]
-            }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"joao@oficinaabc.com.br\",\n  \"password\": \"Senha123!\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/login", "host": ["{{base_url}}"], "path": ["v1", "login"] }
           }
         },
         {
           "name": "Get Current User",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/me",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "me"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/me", "host": ["{{base_url}}"], "path": ["v1", "me"] }
           }
         },
         {
           "name": "Logout",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/logout",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "logout"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/logout", "host": ["{{base_url}}"], "path": ["v1", "logout"] }
           }
         },
         {
           "name": "Forgot Password",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"joao@oficinaabc.com.br\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/forgot-password",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "forgot-password"]
-            }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"joao@oficinaabc.com.br\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/forgot-password", "host": ["{{base_url}}"], "path": ["v1", "forgot-password"] }
           }
         },
         {
           "name": "Reset Password",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token\": \"reset-token-aqui\",\n  \"email\": \"joao@oficinaabc.com.br\",\n  \"password\": \"NovaSenha123!\",\n  \"password_confirmation\": \"NovaSenha123!\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/reset-password",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "reset-password"]
-            }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"reset-token-aqui\",\n  \"email\": \"joao@oficinaabc.com.br\",\n  \"password\": \"NovaSenha123!\",\n  \"password_confirmation\": \"NovaSenha123!\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/reset-password", "host": ["{{base_url}}"], "path": ["v1", "reset-password"] }
           }
         }
       ]
@@ -135,11 +81,7 @@
           "name": "API Status",
           "request": {
             "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/v1/status",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "status"]
-            }
+            "url": { "raw": "{{base_url}}/v1/status", "host": ["{{base_url}}"], "path": ["v1", "status"] }
           }
         }
       ]
@@ -151,190 +93,91 @@
           "name": "List Plans",
           "request": {
             "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/v1/plans",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "plans"]
-            }
+            "url": { "raw": "{{base_url}}/v1/plans", "host": ["{{base_url}}"], "path": ["v1", "plans"] }
           }
         },
         {
           "name": "Get Plan",
           "request": {
             "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/v1/plans/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "plans", "1"]
-            }
+            "url": { "raw": "{{base_url}}/v1/plans/1", "host": ["{{base_url}}"], "path": ["v1", "plans", "1"] }
           }
         },
         {
           "name": "Get Current Subscription",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/subscription",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "subscription"]
-            }
-          }
-        },
-        {
-          "name": "Update Subscription",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"plan_id\": 2,\n  \"payment_method_id\": \"pm_1234567890\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/subscription",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "subscription"]
-            }
-          }
-        },
-        {
-          "name": "Checkout",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"plan_id\": 1\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/subscription/checkout",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "subscription", "checkout"]
-            }
-          }
-        },
-        {
-          "name": "Confirm Subscription",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"session_id\": \"cs_test_1234567890\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/subscription/confirm",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "subscription", "confirm"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/subscription", "host": ["{{base_url}}"], "path": ["v1", "subscription"] }
           }
         },
         {
           "name": "Get Subscription Status",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/subscription/status",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "subscription", "status"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/subscription/status", "host": ["{{base_url}}"], "path": ["v1", "subscription", "status"] }
+          }
+        },
+        {
+          "name": "Update Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"plan_id\": 2,\n  \"payment_method_id\": \"pm_1234567890\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/subscription", "host": ["{{base_url}}"], "path": ["v1", "subscription"] }
+          }
+        },
+        {
+          "name": "Checkout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"plan_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/subscription/checkout", "host": ["{{base_url}}"], "path": ["v1", "subscription", "checkout"] }
+          }
+        },
+        {
+          "name": "Checkout PIX",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"plan_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/subscription/checkout-pix", "host": ["{{base_url}}"], "path": ["v1", "subscription", "checkout-pix"] }
+          }
+        },
+        {
+          "name": "Confirm Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"session_id\": \"cs_test_1234567890\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/subscription/confirm", "host": ["{{base_url}}"], "path": ["v1", "subscription", "confirm"] }
           }
         },
         {
           "name": "Get Invoices",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/subscription/invoices",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "subscription", "invoices"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/subscription/invoices", "host": ["{{base_url}}"], "path": ["v1", "subscription", "invoices"] }
           }
         },
         {
           "name": "Cancel Subscription",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"reason\": \"Cancelamento pelo usuário\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/subscription",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "subscription"]
-            }
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Cancelamento pelo usuário\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/subscription", "host": ["{{base_url}}"], "path": ["v1", "subscription"] }
           }
         },
         {
           "name": "Resume Subscription",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/subscription/resume",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "subscription", "resume"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/subscription/resume", "host": ["{{base_url}}"], "path": ["v1", "subscription", "resume"] }
           }
         }
       ]
@@ -346,101 +189,51 @@
           "name": "Create Payment Intent",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"plan_id\": 1\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/payment-intent",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "payment-intent"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"plan_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/payment-intent", "host": ["{{base_url}}"], "path": ["v1", "payment-intent"] }
           }
         },
         {
           "name": "List Payment Methods",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/payment-methods",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "payment-methods"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/payment-methods", "host": ["{{base_url}}"], "path": ["v1", "payment-methods"] }
           }
         },
         {
           "name": "Delete Payment Method",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/payment-methods/pm_1234567890/delete",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "payment-methods", "pm_1234567890", "delete"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/payment-methods/pm_1234567890/delete", "host": ["{{base_url}}"], "path": ["v1", "payment-methods", "pm_1234567890", "delete"] }
           }
         },
         {
           "name": "Set Default Payment Method",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/payment-methods/pm_1234567890/set-default",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "payment-methods", "pm_1234567890", "set-default"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/payment-methods/pm_1234567890/set-default", "host": ["{{base_url}}"], "path": ["v1", "payment-methods", "pm_1234567890", "set-default"] }
           }
         },
         {
           "name": "Stripe Webhook",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "stripe-signature",
-                "value": "t=1234567890,v1=abc123"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/webhook/stripe",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "webhook", "stripe"]
-            }
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "stripe-signature", "value": "t=1234567890,v1=abc123" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{base_url}}/v1/webhook/stripe", "host": ["{{base_url}}"], "path": ["v1", "webhook", "stripe"] }
+          }
+        },
+        {
+          "name": "AbacatePay Webhook",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{base_url}}/v1/webhook/abacatepay", "host": ["{{base_url}}"], "path": ["v1", "webhook", "abacatepay"] }
           }
         }
       ]
@@ -452,101 +245,42 @@
           "name": "List Users",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/users",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "users"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/users", "host": ["{{base_url}}"], "path": ["v1", "users"] }
           }
         },
         {
           "name": "Create User",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Maria Santos\",\n  \"email\": \"maria@oficinaabc.com.br\",\n  \"phone\": \"11987654322\",\n  \"password\": \"Senha123!\",\n  \"password_confirmation\": \"Senha123!\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/users",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "users"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Maria Santos\",\n  \"email\": \"maria@oficinaabc.com.br\",\n  \"phone\": \"11987654322\",\n  \"password\": \"Senha123!\",\n  \"password_confirmation\": \"Senha123!\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/users", "host": ["{{base_url}}"], "path": ["v1", "users"] }
           }
         },
         {
           "name": "Get User",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/users/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "users", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/users/1", "host": ["{{base_url}}"], "path": ["v1", "users", "1"] }
           }
         },
         {
           "name": "Update User",
           "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Maria Silva\",\n  \"email\": \"maria.silva@oficinaabc.com.br\",\n  \"phone\": \"11987654322\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/users/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "users", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Maria Silva\",\n  \"email\": \"maria.silva@oficinaabc.com.br\",\n  \"phone\": \"11987654322\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/users/1", "host": ["{{base_url}}"], "path": ["v1", "users", "1"] }
           }
         },
         {
           "name": "Delete User",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/users/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "users", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/users/1", "host": ["{{base_url}}"], "path": ["v1", "users", "1"] }
           }
         }
       ]
@@ -558,101 +292,59 @@
           "name": "List Clients",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/clients",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "clients"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/clients", "host": ["{{base_url}}"], "path": ["v1", "clients"] }
           }
         },
         {
           "name": "Create Client",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Pedro\",\n  \"lastname\": \"Oliveira\",\n  \"email\": \"pedro.oliveira@email.com\",\n  \"cpf_cnpj\": \"12345678900\",\n  \"status\": true\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/clients",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "clients"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Pedro\",\n  \"lastname\": \"Oliveira\",\n  \"email\": \"pedro.oliveira@email.com\",\n  \"cpf_cnpj\": \"12345678900\",\n  \"status\": true\n}" },
+            "url": { "raw": "{{base_url}}/v1/clients", "host": ["{{base_url}}"], "path": ["v1", "clients"] }
           }
         },
         {
           "name": "Get Client",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/clients/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "clients", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/clients/1", "host": ["{{base_url}}"], "path": ["v1", "clients", "1"] }
           }
         },
         {
           "name": "Update Client",
           "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Pedro\",\n  \"lastname\": \"Silva\",\n  \"email\": \"pedro.silva@email.com\",\n  \"status\": true\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/clients/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "clients", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Pedro\",\n  \"lastname\": \"Silva\",\n  \"email\": \"pedro.silva@email.com\",\n  \"status\": true\n}" },
+            "url": { "raw": "{{base_url}}/v1/clients/1", "host": ["{{base_url}}"], "path": ["v1", "clients", "1"] }
           }
         },
         {
           "name": "Delete Client",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/clients/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "clients", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/clients/1", "host": ["{{base_url}}"], "path": ["v1", "clients", "1"] }
+          }
+        },
+        {
+          "name": "Get Client Vehicles",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/clients/1/vehicles", "host": ["{{base_url}}"], "path": ["v1", "clients", "1", "vehicles"] }
+          }
+        },
+        {
+          "name": "Change Vehicle Client",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"placa\": \"ABC1234\",\n  \"client_id\": 2\n}" },
+            "url": { "raw": "{{base_url}}/v1/client-change", "host": ["{{base_url}}"], "path": ["v1", "client-change"] }
           }
         }
       ]
@@ -664,101 +356,42 @@
           "name": "List Vehicles",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/vehicles",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "vehicles"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/vehicles", "host": ["{{base_url}}"], "path": ["v1", "vehicles"] }
           }
         },
         {
           "name": "Create Vehicle",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"placa\": \"ABC1234\",\n  \"info\": \"Informações adicionais\",\n  \"chassis\": \"12ABC3456D7890EFG\",\n  \"year\": 2022,\n  \"color\": \"Preto\",\n  \"km\": 15000,\n  \"car_models_id\": 1,\n  \"clients_id\": 1\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/vehicles",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "vehicles"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"placa\": \"ABC1234\",\n  \"info\": \"Informações adicionais\",\n  \"chassis\": \"12ABC3456D7890EFG\",\n  \"year\": 2022,\n  \"color\": \"Preto\",\n  \"km\": 15000,\n  \"car_models_id\": 1,\n  \"clients_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/vehicles", "host": ["{{base_url}}"], "path": ["v1", "vehicles"] }
           }
         },
         {
           "name": "Get Vehicle",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/vehicles/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "vehicles", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/vehicles/ABC1234", "host": ["{{base_url}}"], "path": ["v1", "vehicles", "ABC1234"] }
           }
         },
         {
           "name": "Update Vehicle",
           "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"placa\": \"ABC1234\",\n  \"info\": \"Informações atualizadas\",\n  \"color\": \"Branco\",\n  \"km\": 16000\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/vehicles/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "vehicles", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"info\": \"Informações atualizadas\",\n  \"color\": \"Branco\",\n  \"km\": 16000\n}" },
+            "url": { "raw": "{{base_url}}/v1/vehicles/ABC1234", "host": ["{{base_url}}"], "path": ["v1", "vehicles", "ABC1234"] }
           }
         },
         {
           "name": "Delete Vehicle",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/vehicles/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "vehicles", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/vehicles/ABC1234", "host": ["{{base_url}}"], "path": ["v1", "vehicles", "ABC1234"] }
           }
         }
       ]
@@ -770,101 +403,147 @@
           "name": "List Car Makers",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/car-makers",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "car-makers"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/car-makers", "host": ["{{base_url}}"], "path": ["v1", "car-makers"] }
           }
         },
         {
           "name": "Create Car Maker",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Fiat\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/car-makers",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "car-makers"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Fiat\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/car-makers", "host": ["{{base_url}}"], "path": ["v1", "car-makers"] }
           }
         },
         {
-          "name": "List Car Models",
+          "name": "Get Car Maker",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/car-models",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "car-models"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/car-makers/1", "host": ["{{base_url}}"], "path": ["v1", "car-makers", "1"] }
+          }
+        },
+        {
+          "name": "Update Car Maker",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Fiat Brasil\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/car-makers/1", "host": ["{{base_url}}"], "path": ["v1", "car-makers", "1"] }
+          }
+        },
+        {
+          "name": "Delete Car Maker",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/car-makers/1", "host": ["{{base_url}}"], "path": ["v1", "car-makers", "1"] }
           }
         },
         {
           "name": "Get Models by Maker",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/car-makers/1/models",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "car-makers", "1", "models"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/car-makers/1/models", "host": ["{{base_url}}"], "path": ["v1", "car-makers", "1", "models"] }
+          }
+        },
+        {
+          "name": "List Car Models",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/car-models", "host": ["{{base_url}}"], "path": ["v1", "car-models"] }
           }
         },
         {
           "name": "Create Car Model",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Uno\",\n  \"car_makers_id\": 1\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/car-models",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "car-models"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Uno\",\n  \"car_makers_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/car-models", "host": ["{{base_url}}"], "path": ["v1", "car-models"] }
+          }
+        },
+        {
+          "name": "Get Car Model",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/car-models/1", "host": ["{{base_url}}"], "path": ["v1", "car-models", "1"] }
+          }
+        },
+        {
+          "name": "Update Car Model",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Uno Vivace\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/car-models/1", "host": ["{{base_url}}"], "path": ["v1", "car-models", "1"] }
+          }
+        },
+        {
+          "name": "Delete Car Model",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/car-models/1", "host": ["{{base_url}}"], "path": ["v1", "car-models", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Order Services",
+      "item": [
+        {
+          "name": "List Order Services",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-services", "host": ["{{base_url}}"], "path": ["v1", "order-services"] }
+          }
+        },
+        {
+          "name": "List All Order Services",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-services/list-all", "host": ["{{base_url}}"], "path": ["v1", "order-services", "list-all"] }
+          }
+        },
+        {
+          "name": "Create Order Service",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"vehicle_placa\": \"ABC1234\",\n  \"order_type_id\": 1,\n  \"order_status_id\": 1,\n  \"description\": \"Revisão completa\",\n  \"km\": 45000\n}" },
+            "url": { "raw": "{{base_url}}/v1/order-services", "host": ["{{base_url}}"], "path": ["v1", "order-services"] }
+          }
+        },
+        {
+          "name": "Get Order Service",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-services/1", "host": ["{{base_url}}"], "path": ["v1", "order-services", "1"] }
+          }
+        },
+        {
+          "name": "Update Order Service",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"order_status_id\": 3,\n  \"description\": \"Revisão completa finalizada\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/order-services/1", "host": ["{{base_url}}"], "path": ["v1", "order-services", "1"] }
+          }
+        },
+        {
+          "name": "Delete Order Service",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-services/1", "host": ["{{base_url}}"], "path": ["v1", "order-services", "1"] }
           }
         }
       ]
@@ -876,101 +555,42 @@
           "name": "List Services",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/services",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "services"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/services", "host": ["{{base_url}}"], "path": ["v1", "services"] }
           }
         },
         {
           "name": "Create Service",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Troca de óleo\",\n  \"price\": 150.00,\n  \"information\": \"Troca de óleo e filtro\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/services",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "services"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Troca de óleo\",\n  \"price\": 15000,\n  \"information\": \"Troca de óleo e filtro\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/services", "host": ["{{base_url}}"], "path": ["v1", "services"] }
           }
         },
         {
           "name": "Get Service",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/services/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "services", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/services/1", "host": ["{{base_url}}"], "path": ["v1", "services", "1"] }
           }
         },
         {
           "name": "Update Service",
           "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Troca de óleo premium\",\n  \"price\": 200.00\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/services/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "services", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Troca de óleo premium\",\n  \"price\": 20000\n}" },
+            "url": { "raw": "{{base_url}}/v1/services/1", "host": ["{{base_url}}"], "path": ["v1", "services", "1"] }
           }
         },
         {
           "name": "Delete Service",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/services/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "services", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/services/1", "host": ["{{base_url}}"], "path": ["v1", "services", "1"] }
           }
         }
       ]
@@ -982,101 +602,226 @@
           "name": "List Parts",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/parts",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "parts"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/parts", "host": ["{{base_url}}"], "path": ["v1", "parts"] }
           }
         },
         {
           "name": "Create Part",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Pastilha de Freio\",\n  \"description\": \"Pastilha de freio dianteira\",\n  \"price\": 85.50,\n  \"quantity\": 10\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/parts",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "parts"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Pastilha de Freio\",\n  \"description\": \"Pastilha de freio dianteira\",\n  \"price\": 8550,\n  \"quantity\": 10\n}" },
+            "url": { "raw": "{{base_url}}/v1/parts", "host": ["{{base_url}}"], "path": ["v1", "parts"] }
           }
         },
         {
           "name": "Get Part",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/parts/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "parts", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/parts/1", "host": ["{{base_url}}"], "path": ["v1", "parts", "1"] }
           }
         },
         {
           "name": "Update Part",
           "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Pastilha de Freio Premium\",\n  \"price\": 95.50\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/parts/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "parts", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Pastilha de Freio Premium\",\n  \"price\": 9550\n}" },
+            "url": { "raw": "{{base_url}}/v1/parts/1", "host": ["{{base_url}}"], "path": ["v1", "parts", "1"] }
           }
         },
         {
           "name": "Delete Part",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/parts/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "parts", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/parts/1", "host": ["{{base_url}}"], "path": ["v1", "parts", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Financial",
+      "item": [
+        {
+          "name": "Transactions Summary",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/transactions", "host": ["{{base_url}}"], "path": ["v1", "transactions"] },
+            "description": "Retorna resumo de transações dos últimos 12 meses (incomes, expenses e chart mensal)"
+          }
+        },
+        {
+          "name": "Transactions by Specific Date",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/transactions/period?date=2026-05-09", "host": ["{{base_url}}"], "path": ["v1", "transactions", "period"], "query": [{ "key": "date", "value": "2026-05-09" }] },
+            "description": "Busca transações de um dia específico. Retorna incomes, expenses e balance para esse dia."
+          }
+        },
+        {
+          "name": "Transactions by Period",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/transactions/period?start_date=2026-05-01&end_date=2026-05-31", "host": ["{{base_url}}"], "path": ["v1", "transactions", "period"], "query": [{ "key": "start_date", "value": "2026-05-01" }, { "key": "end_date", "value": "2026-05-31" }] },
+            "description": "Busca transações de um período específico. Retorna incomes (records + ordens concluídas), expenses e balance para o período."
+          }
+        },
+        {
+          "name": "List Incomes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/incomes", "host": ["{{base_url}}"], "path": ["v1", "incomes"] }
+          }
+        },
+        {
+          "name": "Create Income",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Serviço realizado\",\n  \"amount\": 50000,\n  \"date\": \"2026-05-07\",\n  \"income_type_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/incomes", "host": ["{{base_url}}"], "path": ["v1", "incomes"] }
+          }
+        },
+        {
+          "name": "Get Income",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/incomes/1", "host": ["{{base_url}}"], "path": ["v1", "incomes", "1"] }
+          }
+        },
+        {
+          "name": "Update Income",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Serviço realizado - Premium\",\n  \"amount\": 60000\n}" },
+            "url": { "raw": "{{base_url}}/v1/incomes/1", "host": ["{{base_url}}"], "path": ["v1", "incomes", "1"] }
+          }
+        },
+        {
+          "name": "Delete Income",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/incomes/1", "host": ["{{base_url}}"], "path": ["v1", "incomes", "1"] }
+          }
+        },
+        {
+          "name": "List Income Types",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/income-types", "host": ["{{base_url}}"], "path": ["v1", "income-types"] }
+          }
+        },
+        {
+          "name": "Create Income Type",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Serviços\",\n  \"description\": \"Receitas de serviços prestados\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/income-types", "host": ["{{base_url}}"], "path": ["v1", "income-types"] }
+          }
+        },
+        {
+          "name": "Update Income Type",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Serviços e Manutenção\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/income-types/1", "host": ["{{base_url}}"], "path": ["v1", "income-types", "1"] }
+          }
+        },
+        {
+          "name": "Delete Income Type",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/income-types/1", "host": ["{{base_url}}"], "path": ["v1", "income-types", "1"] }
+          }
+        },
+        {
+          "name": "List Expenses",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/expenses", "host": ["{{base_url}}"], "path": ["v1", "expenses"] }
+          }
+        },
+        {
+          "name": "Create Expense",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Compra de peças\",\n  \"amount\": 25000,\n  \"date\": \"2026-05-07\",\n  \"expense_type_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/expenses", "host": ["{{base_url}}"], "path": ["v1", "expenses"] }
+          }
+        },
+        {
+          "name": "Get Expense",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/expenses/1", "host": ["{{base_url}}"], "path": ["v1", "expenses", "1"] }
+          }
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Compra de peças premium\",\n  \"amount\": 35000\n}" },
+            "url": { "raw": "{{base_url}}/v1/expenses/1", "host": ["{{base_url}}"], "path": ["v1", "expenses", "1"] }
+          }
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/expenses/1", "host": ["{{base_url}}"], "path": ["v1", "expenses", "1"] }
+          }
+        },
+        {
+          "name": "List Expense Types",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/expense-types", "host": ["{{base_url}}"], "path": ["v1", "expense-types"] }
+          }
+        },
+        {
+          "name": "Create Expense Type",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Fornecimento\",\n  \"description\": \"Compra de peças e materiais\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/expense-types", "host": ["{{base_url}}"], "path": ["v1", "expense-types"] }
+          }
+        },
+        {
+          "name": "Update Expense Type",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Fornecimento e Materiais\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/expense-types/1", "host": ["{{base_url}}"], "path": ["v1", "expense-types", "1"] }
+          }
+        },
+        {
+          "name": "Delete Expense Type",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/expense-types/1", "host": ["{{base_url}}"], "path": ["v1", "expense-types", "1"] }
           }
         }
       ]
@@ -1088,101 +833,42 @@
           "name": "List Stock",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/stocks",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "stocks"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/stocks", "host": ["{{base_url}}"], "path": ["v1", "stocks"] }
           }
         },
         {
           "name": "Create Stock",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"quantity\": 50,\n  \"min_quantity\": 5,\n  \"location\": \"Prateleira A1\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/stocks",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "stocks"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 50,\n  \"min_quantity\": 5,\n  \"location\": \"Prateleira A1\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/stocks", "host": ["{{base_url}}"], "path": ["v1", "stocks"] }
           }
         },
         {
           "name": "Get Stock",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/stocks/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "stocks", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/stocks/1", "host": ["{{base_url}}"], "path": ["v1", "stocks", "1"] }
           }
         },
         {
           "name": "Update Stock",
           "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"quantity\": 45,\n  \"location\": \"Prateleira A2\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/stocks/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "stocks", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 45,\n  \"location\": \"Prateleira A2\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/stocks/1", "host": ["{{base_url}}"], "path": ["v1", "stocks", "1"] }
           }
         },
         {
           "name": "Delete Stock",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/stocks/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "stocks", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/stocks/1", "host": ["{{base_url}}"], "path": ["v1", "stocks", "1"] }
           }
         }
       ]
@@ -1194,101 +880,42 @@
           "name": "List Suppliers",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/suppliers",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "suppliers"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/suppliers", "host": ["{{base_url}}"], "path": ["v1", "suppliers"] }
           }
         },
         {
           "name": "Create Supplier",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"AutoParts Ltda\",\n  \"email\": \"contato@autoparts.com.br\",\n  \"phone\": \"1133334444\",\n  \"address\": \"Rua das Peças, 123\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"zip\": \"01310100\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/suppliers",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "suppliers"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"AutoParts Ltda\",\n  \"email\": \"contato@autoparts.com.br\",\n  \"phone\": \"1133334444\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/suppliers", "host": ["{{base_url}}"], "path": ["v1", "suppliers"] }
           }
         },
         {
           "name": "Get Supplier",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/suppliers/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "suppliers", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/suppliers/1", "host": ["{{base_url}}"], "path": ["v1", "suppliers", "1"] }
           }
         },
         {
           "name": "Update Supplier",
           "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"AutoParts Premium\",\n  \"phone\": \"1133334445\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/suppliers/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "suppliers", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"AutoParts Premium\",\n  \"phone\": \"1133334445\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/suppliers/1", "host": ["{{base_url}}"], "path": ["v1", "suppliers", "1"] }
           }
         },
         {
           "name": "Delete Supplier",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/suppliers/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "suppliers", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/suppliers/1", "host": ["{{base_url}}"], "path": ["v1", "suppliers", "1"] }
           }
         }
       ]
@@ -1300,313 +927,42 @@
           "name": "List Categories",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/categories",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "categories"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/categories", "host": ["{{base_url}}"], "path": ["v1", "categories"] }
           }
         },
         {
           "name": "Create Category",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Freios\",\n  \"description\": \"Componentes do sistema de freio\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/categories",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "categories"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Freios\",\n  \"description\": \"Componentes do sistema de freio\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/categories", "host": ["{{base_url}}"], "path": ["v1", "categories"] }
           }
         },
         {
           "name": "Get Category",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/categories/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "categories", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/categories/1", "host": ["{{base_url}}"], "path": ["v1", "categories", "1"] }
           }
         },
         {
           "name": "Update Category",
           "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Freios e Discos\",\n  \"description\": \"Componentes do sistema de freio e discos\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/categories/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "categories", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Freios e Discos\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/categories/1", "host": ["{{base_url}}"], "path": ["v1", "categories", "1"] }
           }
         },
         {
           "name": "Delete Category",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/categories/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "categories", "1"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Incomes",
-      "item": [
-        {
-          "name": "List Incomes",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/incomes",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "incomes"]
-            }
-          }
-        },
-        {
-          "name": "Create Income",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Serviço realizado\",\n  \"amount\": 500.00,\n  \"date\": \"2024-04-27\",\n  \"category\": \"Serviços\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/incomes",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "incomes"]
-            }
-          }
-        },
-        {
-          "name": "Get Income",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/incomes/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "incomes", "1"]
-            }
-          }
-        },
-        {
-          "name": "Update Income",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Serviço realizado - Premium\",\n  \"amount\": 600.00\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/incomes/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "incomes", "1"]
-            }
-          }
-        },
-        {
-          "name": "Delete Income",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/incomes/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "incomes", "1"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Expenses",
-      "item": [
-        {
-          "name": "List Expenses",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/expenses",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "expenses"]
-            }
-          }
-        },
-        {
-          "name": "Create Expense",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Compra de peças\",\n  \"amount\": 250.00,\n  \"date\": \"2024-04-27\",\n  \"category\": \"Fornecimento\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/expenses",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "expenses"]
-            }
-          }
-        },
-        {
-          "name": "Get Expense",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/expenses/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "expenses", "1"]
-            }
-          }
-        },
-        {
-          "name": "Update Expense",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Compra de peças premium\",\n  \"amount\": 350.00\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/expenses/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "expenses", "1"]
-            }
-          }
-        },
-        {
-          "name": "Delete Expense",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/expenses/1",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "expenses", "1"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/categories/1", "host": ["{{base_url}}"], "path": ["v1", "categories", "1"] }
           }
         }
       ]
@@ -1618,84 +974,84 @@
           "name": "List Order Types",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/order-types",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "order-types"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-types", "host": ["{{base_url}}"], "path": ["v1", "order-types"] }
           }
         },
         {
           "name": "Create Order Type",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Manutenção\",\n  \"description\": \"Serviço de manutenção geral\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/order-types",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "order-types"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Manutenção\",\n  \"description\": \"Serviço de manutenção geral\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/order-types", "host": ["{{base_url}}"], "path": ["v1", "order-types"] }
+          }
+        },
+        {
+          "name": "Get Order Type",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-types/1", "host": ["{{base_url}}"], "path": ["v1", "order-types", "1"] }
+          }
+        },
+        {
+          "name": "Update Order Type",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Manutenção Preventiva\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/order-types/1", "host": ["{{base_url}}"], "path": ["v1", "order-types", "1"] }
+          }
+        },
+        {
+          "name": "Delete Order Type",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-types/1", "host": ["{{base_url}}"], "path": ["v1", "order-types", "1"] }
           }
         },
         {
           "name": "List Order Statuses",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/order-statuses",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "order-statuses"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-statuses", "host": ["{{base_url}}"], "path": ["v1", "order-statuses"] }
           }
         },
         {
           "name": "Create Order Status",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Em Progresso\",\n  \"color\": \"#FFA500\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/order-statuses",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "order-statuses"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Em Progresso\",\n  \"color\": \"#FFA500\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/order-statuses", "host": ["{{base_url}}"], "path": ["v1", "order-statuses"] }
+          }
+        },
+        {
+          "name": "Get Order Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-statuses/1", "host": ["{{base_url}}"], "path": ["v1", "order-statuses", "1"] }
+          }
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Em Andamento\",\n  \"color\": \"#FF8C00\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/order-statuses/1", "host": ["{{base_url}}"], "path": ["v1", "order-statuses", "1"] }
+          }
+        },
+        {
+          "name": "Delete Order Status",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/order-statuses/1", "host": ["{{base_url}}"], "path": ["v1", "order-statuses", "1"] }
           }
         }
       ]
@@ -1707,42 +1063,42 @@
           "name": "List Addresses",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/addresses",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "addresses"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/addresses", "host": ["{{base_url}}"], "path": ["v1", "addresses"] }
           }
         },
         {
           "name": "Create Address",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"street\": \"Rua das Flores\",\n  \"number\": \"123\",\n  \"complement\": \"Apt 45\",\n  \"neighborhood\": \"Centro\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"zip_code\": \"01310100\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/addresses",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "addresses"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"street\": \"Rua das Flores\",\n  \"number\": \"123\",\n  \"complement\": \"Apt 45\",\n  \"neighborhood\": \"Centro\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"zip_code\": \"01310100\",\n  \"clients_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/addresses", "host": ["{{base_url}}"], "path": ["v1", "addresses"] }
+          }
+        },
+        {
+          "name": "Get Address",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/addresses/1", "host": ["{{base_url}}"], "path": ["v1", "addresses", "1"] }
+          }
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"street\": \"Rua das Flores\",\n  \"number\": \"456\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/addresses/1", "host": ["{{base_url}}"], "path": ["v1", "addresses", "1"] }
+          }
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/addresses/1", "host": ["{{base_url}}"], "path": ["v1", "addresses", "1"] }
           }
         }
       ]
@@ -1754,43 +1110,121 @@
           "name": "List Phones",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/phones",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "phones"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/phones", "host": ["{{base_url}}"], "path": ["v1", "phones"] }
           }
         },
         {
           "name": "Create Phone",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"number\": \"11987654321\",\n  \"type\": \"celular\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/phones",
-              "host": ["{{base_url}}"],
-              "path": ["v1", "phones"]
-            }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"phone_one\": \"11987654321\",\n  \"phone_two\": \"1133221100\",\n  \"phone_three\": null,\n  \"clients_id\": 1\n}" },
+            "url": { "raw": "{{base_url}}/v1/phones", "host": ["{{base_url}}"], "path": ["v1", "phones"] }
           }
+        },
+        {
+          "name": "Get Phone",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/phones/1", "host": ["{{base_url}}"], "path": ["v1", "phones", "1"] }
+          }
+        },
+        {
+          "name": "Update Phone",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"phone_one\": \"11999999999\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/phones/1", "host": ["{{base_url}}"], "path": ["v1", "phones", "1"] }
+          }
+        },
+        {
+          "name": "Delete Phone",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/v1/phones/1", "host": ["{{base_url}}"], "path": ["v1", "phones", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Client App",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Request OTP",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"11999999999\"\n}" },
+                "url": { "raw": "{{base_url}}/v1/client-app/auth/request-otp", "host": ["{{base_url}}"], "path": ["v1", "client-app", "auth", "request-otp"] },
+                "description": "Envia código OTP via WhatsApp. Máximo 3 tentativas por 15 min."
+              }
+            },
+            {
+              "name": "Verify OTP",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": ["var json = pm.response.json();", "if (json.token) { pm.collectionVariables.set('client_token', json.token); }"],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"11999999999\",\n  \"code\": \"123456\"\n}" },
+                "url": { "raw": "{{base_url}}/v1/client-app/auth/verify-otp", "host": ["{{base_url}}"], "path": ["v1", "client-app", "auth", "verify-otp"] },
+                "description": "Valida o OTP e retorna Bearer Token (30 dias). Salva em {{client_token}} automaticamente."
+              }
+            },
+            {
+              "name": "Me",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+                "url": { "raw": "{{base_url}}/v1/client-app/auth/me", "host": ["{{base_url}}"], "path": ["v1", "client-app", "auth", "me"] }
+              }
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+                "url": { "raw": "{{base_url}}/v1/client-app/auth/logout", "host": ["{{base_url}}"], "path": ["v1", "client-app", "auth", "logout"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vehicles",
+          "item": [
+            {
+              "name": "List Vehicles",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+                "url": { "raw": "{{base_url}}/v1/client-app/vehicles", "host": ["{{base_url}}"], "path": ["v1", "client-app", "vehicles"] },
+                "description": "Lista todos os veículos agrupados por placa, de todas as oficinas."
+              }
+            },
+            {
+              "name": "Get Vehicle",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+                "url": { "raw": "{{base_url}}/v1/client-app/vehicles/ABC1234", "host": ["{{base_url}}"], "path": ["v1", "client-app", "vehicles", "ABC1234"] },
+                "description": "Detalhe do veículo com histórico de OS unificado de todas as oficinas."
+              }
+            }
+          ]
         }
       ]
     }
@@ -1803,7 +1237,12 @@
     },
     {
       "key": "token",
-      "value": "seu_token_aqui",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "client_token",
+      "value": "",
       "type": "string"
     }
   ]

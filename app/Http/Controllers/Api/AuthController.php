@@ -139,7 +139,7 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        $user = $request->user()->load(['company', 'company.subscription.plan.features']);
+        $user = $request->user()->load(['company', 'company.subscription.plan']);
         $subscriptionData = $this->getSubscriptionData($user);
 
         return response()->json([
@@ -218,9 +218,17 @@ class AuthController extends Controller
                 'price' => $subscription->plan->price,
                 'interval' => $subscription->plan->interval,
                 'max_users' => $subscription->plan->max_users,
+                'max_clients' => $subscription->plan->max_clients,
                 'max_vehicles' => $subscription->plan->max_vehicles,
                 'max_orders' => $subscription->plan->max_orders,
-                'max_clients' => $subscription->plan->max_clients,
+                'max_parts_for_order' => $subscription->plan->max_parts_for_order,
+                'max_services_for_order' => $subscription->plan->max_services_for_order,
+                'max_stock_quantity' => $subscription->plan->max_stock_quantity,
+                'has_advanced_reports' => $subscription->plan->has_advanced_reports,
+                'has_api_access' => $subscription->plan->has_api_access,
+                'has_priority_support' => $subscription->plan->has_priority_support,
+                'has_multi_branch' => $subscription->plan->has_multi_branch,
+                'has_stock_management' => $subscription->plan->has_stock_management,
             ],
             'current_period' => [
                 'start' => $subscription->current_period_start,

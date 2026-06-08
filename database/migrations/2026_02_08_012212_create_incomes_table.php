@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::create('incomes', function (Blueprint $table) {
             $table->id();
-            $table->string('income');
+            $table->foreignId('income_types_id')->constrained('income_types')->onDelete('cascade');
             $table->string('info')->nullable();
             $table->date('date')->nullable();
             $table->decimal('value', 10, 2)->nullable();

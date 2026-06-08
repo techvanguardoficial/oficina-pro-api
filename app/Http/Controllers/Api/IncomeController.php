@@ -18,7 +18,7 @@ class IncomeController extends Controller
     {
         //$this->authorizePermission('view_income');
 
-        $incomes = Income::paginate(20);
+        $incomes = Income::with('type')->paginate(20);
         return response()->json($incomes);
     }
 
@@ -30,9 +30,10 @@ class IncomeController extends Controller
         $this->authorizePermission('create_income');
 
         $validated = $request->validate([
-            'description' => 'required|string|max:255',
+            'info' => 'required|string|max:255',
             'value' => 'required|numeric|min:0.01',
             'date' => 'required|date',
+            'income_types_id' => 'required|integer|exists:income_types,id',
         ]);
 
         // Get company from authenticated user
@@ -63,9 +64,10 @@ class IncomeController extends Controller
         $this->authorizePermission('edit_income');
 
         $validated = $request->validate([
-            'description' => 'sometimes|string|max:255',
+            'info' => 'sometimes|string|max:255',
             'value' => 'sometimes|numeric|min:0.01',
             'date' => 'sometimes|date',
+            'income_types_id' => 'sometimes|integer|exists:income_types,id',
         ]);
 
         $income->update($validated);

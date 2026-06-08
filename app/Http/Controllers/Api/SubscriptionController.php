@@ -28,7 +28,6 @@ class SubscriptionController extends Controller
     public function listPlans()
     {
         $plans = Plan::where('is_active', true)
-            ->with('features')
             ->orderBy('sort_order')
             ->get();
 
@@ -40,7 +39,7 @@ class SubscriptionController extends Controller
      */
     public function getPlan(Plan $plan)
     {
-        return response()->json($plan->load('features'));
+        return response()->json($plan);
     }
 
     /**
@@ -315,8 +314,8 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            // Validar se pagamento foi confirmado
-            if ($session->payment_status !== 'paid') {
+            // Aceita 'paid' (pagamento imediato) ou 'no_payment_required' (trial)
+            if (!in_array($session->payment_status, ['paid', 'no_payment_required'])) {
                 return response()->json([
                     'error' => 'Payment not completed',
                     'code' => 'PAYMENT_NOT_COMPLETED',
@@ -345,15 +344,18 @@ class SubscriptionController extends Controller
                     'stripe_customer_id' => $session->customer,
                     'stripe_subscription_id' => $session->subscription,
                     'status' => $stripeSubscription->status,
-                    'current_period_start' => $stripeSubscription->current_period_start ?
-                        \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_start) :
-                        null,
-                    'current_period_end' => $stripeSubscription->current_period_end ?
-                        \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end) :
-                        null,
-                    'trial_ends_at' => $stripeSubscription->trial_end ?
-                        \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) :
-                        null,
+                    'current_period_start' => $stripeSubscription->current_period_start
+                        ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_start)
+                        : null,
+                    'current_period_end' => $stripeSubscription->current_period_end
+                        ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end)
+                        : null,
+                    'trial_starts_at' => $stripeSubscription->trial_start
+                        ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_start)
+                        : null,
+                    'trial_ends_at' => $stripeSubscription->trial_end
+                        ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end)
+                        : null,
                 ]
             );
 

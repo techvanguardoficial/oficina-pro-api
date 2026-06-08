@@ -20,12 +20,34 @@ use App\Http\Controllers\Api\PartController;
 use App\Http\Controllers\Api\IncomeController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ExpenseTypeController;
+use App\Http\Controllers\Api\IncomeTypeController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\AbacatePayWebhookController;
+use App\Http\Controllers\ClientApp\AuthController as ClientAuthController;
+use App\Http\Controllers\ClientApp\VehicleController as ClientVehicleController;
 
 Route::prefix('v1')->group(function () {
+
+    // ─── Client App (app do proprietário do veículo) ───────────────────────
+    Route::prefix('client-app')->group(function () {
+
+        // Públicas
+        Route::post('auth/request-otp', [ClientAuthController::class, 'requestOtp']);
+        Route::post('auth/verify-otp',  [ClientAuthController::class, 'verifyOtp']);
+
+        // Protegidas — requer token Sanctum de ClientAppUser
+        Route::middleware(['auth:sanctum', 'client.app'])->group(function () {
+            Route::get('auth/me',      [ClientAuthController::class, 'me']);
+            Route::post('auth/logout', [ClientAuthController::class, 'logout']);
+
+            Route::get('vehicles',          [ClientVehicleController::class, 'index']);
+            Route::get('vehicles/{placa}',  [ClientVehicleController::class, 'show']);
+        });
+    });
+    // ───────────────────────────────────────────────────────────────────────
 
     Route::get('status', function () {
         return response()->json(['status' => 'API V1 Servcar is alive!'], 200);
@@ -81,6 +103,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('car-makers', CarMakerController::class);
         Route::apiResource('car-models', CarModelController::class);
         Route::get('car-makers/{makerId}/models', [CarModelController::class, 'getByMaker']);
+        Route::post('client-change', [VehicleController::class, 'clientChange']);
         Route::apiResource('vehicles', VehicleController::class);
         Route::get('order-services/list-all', [OrderServiceController::class, 'listAll']);
         Route::apiResource('order-services', OrderServiceController::class);
@@ -88,12 +111,15 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('parts', PartController::class);
         Route::apiResource('incomes', IncomeController::class);
         Route::apiResource('expenses', ExpenseController::class);
+        Route::apiResource('expense-types', ExpenseTypeController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::apiResource('income-types', IncomeTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::apiResource('order-types', OrderTypeController::class);
         Route::apiResource('order-statuses', OrderStatusController::class);
         Route::apiResource('categories', CategoryController::class);
         Route::apiResource('suppliers', SupplierController::class);
         Route::apiResource('stocks', StockController::class);
         Route::get('transactions', [TransactionController::class, 'summary']);
+        Route::get('transactions/period', [TransactionController::class, 'period']);
     });
 
 });

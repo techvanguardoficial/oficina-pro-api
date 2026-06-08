@@ -41,9 +41,13 @@ trait ChecksPlanLimits
                 'label' => 'veículos',
             ],
             'orders' => [
-                'current' => $company->orderServices()->count(),
+                // Conta apenas as OS abertas no mês corrente — o limite reflete
+                // o volume de uso recorrente, não o histórico acumulado da empresa.
+                'current' => $company->orderServices()
+                    ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+                    ->count(),
                 'max' => $plan->max_orders,
-                'label' => 'pedidos',
+                'label' => 'ordens de serviço neste mês',
             ],
         ];
 

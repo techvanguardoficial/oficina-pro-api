@@ -65,13 +65,4 @@ class Company extends Model
     {
         return $this->subscription?->isActive() ?? false;
     }
-
-    public function canAccessFeature(Feature|string $feature): bool
-    {
-        if (!$this->hasActiveSubscription()) {
-            return false;
-        }
-
-        return $this->subscription->hasFeature($feature);
-    }
 }

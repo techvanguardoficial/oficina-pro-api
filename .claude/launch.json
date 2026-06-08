@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "oficina-pro-dev",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d C:\Users\Robson\Desktop\frontend-web\oficina-pro && npm run dev"],
+      "port": 3001
+    }
+  ]
+}

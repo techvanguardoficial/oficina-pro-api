@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
         Schema::create('plans', function (Blueprint $table) {
@@ -21,7 +20,15 @@ return new class extends Migration
             $table->integer('max_users')->nullable(); // limitar quantidade de usuários (-1 = ilimitado)
             $table->integer('max_vehicles')->nullable();
             $table->integer('max_orders')->nullable();
+            $table->integer('max_parts_for_order')->nullable();
+            $table->integer('max_services_for_order')->nullable();
             $table->integer('max_clients')->nullable();
+            $table->boolean('has_advanced_reports')->default(false);
+            $table->boolean('has_api_access')->default(false);
+            $table->boolean('has_priority_support')->default(false);
+            $table->boolean('has_multi_branch')->default(false);
+            $table->boolean('has_stock_management')->default(false);
+            $table->integer('max_stock_quantity')->nullable();
             $table->integer('sort_order')->default(0); // para ordenação na UI
             $table->boolean('is_active')->default(true);
             $table->timestamps();

@@ -80,11 +80,6 @@ class Subscription extends Model
                now()->lessThan($this->current_period_end);
     }
 
-    public function hasFeature(Feature|string $feature): bool
-    {
-        return $this->plan->hasFeature($feature);
-    }
-
     public function checkLimits(): array
     {
         $company = $this->company;
@@ -112,9 +107,14 @@ class Subscription extends Model
             ];
         }
 
-        if ($plan->max_orders && $company->orderServices()->count() > $plan->max_orders) {
+        // Limite de OS é mensal (uso recorrente), não acumulado no histórico.
+        $ordersThisMonth = $company->orderServices()
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->count();
+
+        if ($plan->max_orders && $ordersThisMonth > $plan->max_orders) {
             $violations['orders'] = [
-                'current' => $company->orderServices()->count(),
+                'current' => $ordersThisMonth,
                 'limit' => $plan->max_orders,
             ];
         }

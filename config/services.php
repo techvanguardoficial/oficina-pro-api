@@ -47,4 +47,10 @@ return [
         'api_key' => env('ABACATEPAY_API_KEY'),
     ],
 
+    'evolution_api' => [
+        'url'      => env('EVOLUTION_API_URL', 'https://integrations-evolution-api.ghqegs.easypanel.host'),
+        'key'      => env('EVOLUTION_API_KEY'),
+        'instance' => env('EVOLUTION_INSTANCE', 'oficina-pro-envio'),
+    ],
+
 ];

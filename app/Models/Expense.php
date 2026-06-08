@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Scopes\CompanyScope;
 
 class Expense extends Model
@@ -17,7 +18,8 @@ class Expense extends Model
 
     protected $fillable = [
         'company_id',
-        'description',
+        'expense_types_id',
+        'info',
         'value',
         'date',
     ];
@@ -25,5 +27,11 @@ class Expense extends Model
     protected $casts = [
         'date' => 'date',
         'deleted_at' => 'datetime',
+        'value' => 'float',
     ];
+
+    public function type(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseType::class, 'expense_types_id');
+    }
 }

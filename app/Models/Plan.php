@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Plan extends Model
 {
@@ -24,7 +23,15 @@ class Plan extends Model
         'max_users',
         'max_vehicles',
         'max_orders',
+        'max_parts_for_order',
+        'max_services_for_order',
         'max_clients',
+        'max_stock_quantity',
+        'has_advanced_reports',
+        'has_api_access',
+        'has_priority_support',
+        'has_multi_branch',
+        'has_stock_management',
         'sort_order',
         'is_active',
     ];
@@ -35,34 +42,20 @@ class Plan extends Model
         'max_users' => 'integer',
         'max_vehicles' => 'integer',
         'max_orders' => 'integer',
+        'max_parts_for_order' => 'integer',
+        'max_services_for_order' => 'integer',
         'max_clients' => 'integer',
+        'max_stock_quantity' => 'integer',
+        'has_advanced_reports' => 'boolean',
+        'has_api_access' => 'boolean',
+        'has_priority_support' => 'boolean',
+        'has_multi_branch' => 'boolean',
+        'has_stock_management' => 'boolean',
         'is_active' => 'boolean',
     ];
-
-    public function features(): BelongsToMany
-    {
-        return $this->belongsToMany(Feature::class, 'plan_features')
-            ->withPivot('is_included')
-            ->withTimestamps();
-    }
 
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
-    }
-
-    public function hasFeature(Feature|string $feature): bool
-    {
-        if (is_string($feature)) {
-            return $this->features()
-                ->where('slug', $feature)
-                ->where('is_included', true)
-                ->exists();
-        }
-
-        return $this->features()
-            ->where('feature_id', $feature->id)
-            ->where('is_included', true)
-            ->exists();
     }
 }

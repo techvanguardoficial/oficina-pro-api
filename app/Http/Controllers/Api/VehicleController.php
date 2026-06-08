@@ -94,6 +94,21 @@ class VehicleController extends Controller
         return response()->json($vehicle);
     }
 
+    public function clientChange(Request $request)
+    {
+        $validated = $request->validate([
+            'placa'      => 'required|string|exists:vehicles,placa',
+            'clients_id' => 'required|integer|exists:clients,id',
+        ]);
+
+        $vehicle = Vehicle::where('placa', $validated['placa'])->firstOrFail();
+        $this->authorizeCompany($vehicle);
+
+        $vehicle->update(['clients_id' => $validated['clients_id']]);
+
+        return response()->json($vehicle->load(['client', 'carModel', 'company']));
+    }
+
     /**
      * Remove the specified resource from storage.
      */
