@@ -13,13 +13,26 @@ class Vehicle extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $primaryKey = 'placa';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    // A partir da migração 2026_06_15_*, `id` (autoincrement) é a PK e
+    // `placa` deixou de ser identificador global único — agora é única por
+    // empresa (unique composto company_id+placa), permitindo que o mesmo
+    // veículo físico seja atendido em oficinas diferentes sem conflito.
 
     protected static function booted(): void
     {
         static::addGlobalScope(new CompanyScope());
+    }
+
+    /**
+     * As rotas/URLs do app continuam usando a placa como identificador
+     * "amigável" (ex.: /clients/64/vehicles/GSV5470). Como `placa` deixou de
+     * ser PK/única globalmente — agora é única por empresa — fazemos o
+     * binding manualmente escopado por company_id (via CompanyScope, que já
+     * está ativo aqui) para resolver corretamente o veículo desta oficina.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $this->where($field ?? 'placa', $value)->firstOrFail();
     }
 
     protected $fillable = [
@@ -57,12 +70,12 @@ class Vehicle extends Model
 
     public function orderServices(): HasMany
     {
-        return $this->hasMany(OrderService::class, 'vehicle_placa', 'placa');
+        return $this->hasMany(OrderService::class, 'vehicle_id', 'id');
     }
 
     public function mileages(): HasMany
     {
-        return $this->hasMany(CarMileage::class, 'vehicles_placa', 'placa');
+        return $this->hasMany(CarMileage::class, 'vehicle_id', 'id');
     }
 
     protected $appends = ['current_km', 'formatted_placa'];

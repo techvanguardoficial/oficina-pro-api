@@ -43,15 +43,28 @@ class VehicleController extends Controller
             return $limitCheck;
         }
 
+        $companyId = $request->user()->company_id;
+
         $validated = $request->validate([
-            'placa' => 'required|string|max:7|unique:vehicles,placa',
+            'placa' => [
+                'required', 'string', 'max:7',
+                \Illuminate\Validation\Rule::unique('vehicles', 'placa')->where('company_id', $companyId),
+            ],
             'info' => 'nullable|string|max:255',
-            'chassis' => 'nullable|string|max:255|unique:vehicles,chassis',
+            'chassis' => [
+                'nullable', 'string', 'max:255',
+                \Illuminate\Validation\Rule::unique('vehicles', 'chassis')->where('company_id', $companyId),
+            ],
             'year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
             'color' => 'nullable|string|max:255',
             'km' => 'nullable|numeric|min:0',
             'car_models_id' => 'required|exists:car_models,id',
             'clients_id' => 'required|exists:clients,id',
+        ], [
+            'placa.required'  => 'A placa é obrigatória.',
+            'placa.max'       => 'A placa deve ter no máximo 7 caracteres.',
+            'placa.unique'    => 'Esta placa já está cadastrada nesta oficina.',
+            'chassis.unique'  => 'Este chassi já está cadastrado nesta oficina.',
         ]);
 
         // Get company from authenticated user
@@ -83,14 +96,27 @@ class VehicleController extends Controller
         $this->authorizePermission('edit_vehicle');
 
         $validated = $request->validate([
-            'placa' => 'sometimes|string|max:7|unique:vehicles,placa,' . $vehicle->placa . ',placa',
+            'placa' => [
+                'sometimes', 'string', 'max:7',
+                \Illuminate\Validation\Rule::unique('vehicles', 'placa')
+                    ->where('company_id', $vehicle->company_id)
+                    ->ignore($vehicle->id),
+            ],
             'info' => 'nullable|string|max:255',
-            'chassis' => 'nullable|string|max:255|unique:vehicles,chassis,' . $vehicle->placa . ',placa',
+            'chassis' => [
+                'nullable', 'string', 'max:255',
+                \Illuminate\Validation\Rule::unique('vehicles', 'chassis')
+                    ->where('company_id', $vehicle->company_id)
+                    ->ignore($vehicle->id),
+            ],
             'year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
             'color' => 'nullable|string|max:255',
             'km' => 'nullable|numeric|min:0',
             'car_models_id' => 'sometimes|exists:car_models,id',
             'clients_id' => 'nullable|exists:clients,id',
+        ], [
+            'placa.unique'   => 'Esta placa já está cadastrada nesta oficina.',
+            'chassis.unique' => 'Este chassi já está cadastrado nesta oficina.',
         ]);
 
         $vehicle->update($validated);
@@ -101,12 +127,17 @@ class VehicleController extends Controller
 
     public function clientChange(Request $request)
     {
+        $companyId = $request->user()->company_id;
+
         $validated = $request->validate([
-            'placa'      => 'required|string|exists:vehicles,placa',
+            'placa' => [
+                'required', 'string',
+                \Illuminate\Validation\Rule::exists('vehicles', 'placa')->where('company_id', $companyId),
+            ],
             'clients_id' => 'required|integer|exists:clients,id',
         ]);
 
-        $vehicle = Vehicle::where('placa', $validated['placa'])->firstOrFail();
+        $vehicle = Vehicle::where('placa', $validated['placa'])->where('company_id', $companyId)->firstOrFail();
         $this->authorizeCompany($vehicle);
 
         $vehicle->update(['clients_id' => $validated['clients_id']]);

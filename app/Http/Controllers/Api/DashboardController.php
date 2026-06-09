@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\DB;
  * Importante: os cálculos são feitos via GROUP BY no banco (não em memória
  * sobre uma página de resultados), garantindo que o "Top N" reflita o
  * histórico completo da empresa, não apenas a primeira página de ordens.
+ *
+ * Nota: os JOINs usam `os.vehicle_id = v.id` após a migração 2026_06_15_*
+ * que substituiu a FK baseada em `placa` pela FK numérica `vehicle_id`.
  */
 class DashboardController extends Controller
 {
@@ -26,7 +29,7 @@ class DashboardController extends Controller
         $limit = $limit > 0 ? min($limit, 50) : 5;
 
         $rows = DB::table('order_services as os')
-            ->join('vehicles as v', 'v.placa', '=', 'os.vehicle_placa')
+            ->join('vehicles as v', 'v.id', '=', 'os.vehicle_id')
             ->join('car_models as cm', 'cm.id', '=', 'v.car_models_id')
             ->where('os.company_id', $companyId)
             ->whereNull('os.deleted_at')
@@ -52,7 +55,7 @@ class DashboardController extends Controller
         $limit = $limit > 0 ? min($limit, 50) : 3;
 
         $rows = DB::table('order_services as os')
-            ->join('vehicles as v', 'v.placa', '=', 'os.vehicle_placa')
+            ->join('vehicles as v', 'v.id', '=', 'os.vehicle_id')
             ->join('clients as c', 'c.id', '=', 'v.clients_id')
             ->where('os.company_id', $companyId)
             ->whereNull('os.deleted_at')
@@ -84,7 +87,7 @@ class DashboardController extends Controller
 
         $rows = DB::table('order_services as os')
             ->join('orders_status as st', 'st.id', '=', 'os.orders_status_id')
-            ->join('vehicles as v', 'v.placa', '=', 'os.vehicle_placa')
+            ->join('vehicles as v', 'v.id', '=', 'os.vehicle_id')
             ->leftJoin('clients as c', 'c.id', '=', 'v.clients_id')
             ->leftJoin('car_models as cm', 'cm.id', '=', 'v.car_models_id')
             ->where('os.company_id', $companyId)
@@ -93,7 +96,7 @@ class DashboardController extends Controller
             ->select(
                 'os.id as id',
                 'os.created_at as created_at',
-                'os.vehicle_placa as placa',
+                'v.placa as placa',
                 'c.id as client_id',
                 DB::raw('COALESCE(cm.model, "") as model'),
                 DB::raw("TRIM(CONCAT(COALESCE(c.name, ''), ' ', COALESCE(c.lastname, ''))) as client_name")
@@ -104,12 +107,12 @@ class DashboardController extends Controller
 
         return response()->json(
             $rows->map(fn ($r) => [
-                'id' => (int) $r->id,
-                'placa' => $r->placa,
-                'clientId' => $r->client_id !== null ? (int) $r->client_id : null,
-                'model' => $r->model,
+                'id'         => (int) $r->id,
+                'placa'      => $r->placa,
+                'clientId'   => $r->client_id !== null ? (int) $r->client_id : null,
+                'model'      => $r->model,
                 'clientName' => $r->client_name,
-                'createdAt' => $r->created_at,
+                'createdAt'  => $r->created_at,
             ])
         );
     }

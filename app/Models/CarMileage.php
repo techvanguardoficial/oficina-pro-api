@@ -14,7 +14,7 @@ class CarMileage extends Model
     protected $fillable = [
         'company_id',
         'mileage',
-        'vehicles_placa',
+        'vehicle_id',
         'order_services_id',
     ];
 
@@ -27,7 +27,7 @@ class CarMileage extends Model
     // Relationships
     public function vehicle(): BelongsTo
     {
-        return $this->belongsTo(Vehicle::class, 'vehicles_placa', 'placa');
+        return $this->belongsTo(Vehicle::class, 'vehicle_id', 'id');
     }
 
     public function orderService(): BelongsTo

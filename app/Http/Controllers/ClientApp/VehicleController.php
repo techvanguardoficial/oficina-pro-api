@@ -42,15 +42,21 @@ class VehicleController extends Controller
     {
         $clientIds = $request->user()->clientIds();
 
+        // Placas são armazenadas em maiúsculas no banco — normalizar para
+        // garantir match independente de como o app envia o parâmetro.
+        // Como o mesmo veículo físico pode ter registros em várias oficinas
+        // (company_id diferentes) após a migração de PK, usamos `whereIn`
+        // nos client_ids do usuário para trazer todos os registros relevantes.
         $vehicles = Vehicle::withoutGlobalScope(CompanyScope::class)
-            ->where('placa', strtolower($placa))
+            ->whereRaw('UPPER(placa) = ?', [strtoupper($placa)])
             ->whereIn('clients_id', $clientIds)
             ->with([
                 'carModel.carMaker',
                 'client.company:id,name,fantasy_name',
                 'orderServices' => function ($q) {
-                    $q->withoutGlobalScope(CompanyScope::class)
-                      ->with(['orderStatus', 'orderType'])
+                    // OrderService não tem CompanyScope, mas carregamos sem
+                    // filtro de company para unificar o histórico cross-oficina.
+                    $q->with(['status', 'type'])
                       ->orderByDesc('created_at');
                 },
             ])

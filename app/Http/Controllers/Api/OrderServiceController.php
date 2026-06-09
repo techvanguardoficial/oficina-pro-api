@@ -24,7 +24,20 @@ class OrderServiceController extends Controller
             ->orderBy('id', 'desc');
 
         if ($request->filled('placa')) {
-            $query->where('vehicle_placa', $request->input('placa'));
+            // `vehicle_placa` foi removida da tabela na migração 2026_06_15_000004.
+            // Resolvemos o vehicle_id pelo par (company_id, placa) e filtramos por ele.
+            $companyId = auth()->user()->company_id;
+            $vehicleId = \App\Models\Vehicle::withoutGlobalScope(\App\Models\Scopes\CompanyScope::class)
+                ->where('company_id', $companyId)
+                ->whereRaw('UPPER(placa) = ?', [strtoupper($request->input('placa'))])
+                ->value('id');
+
+            if ($vehicleId) {
+                $query->where('vehicle_id', $vehicleId);
+            } else {
+                // Placa não encontrada nesta empresa — retorna vazio
+                $query->whereRaw('1 = 0');
+            }
         }
 
         return response()->json($query->paginate(25));
@@ -47,7 +60,12 @@ class OrderServiceController extends Controller
         }
 
         $validated = $request->validate([
-            'vehicle_placa' => 'required|string|exists:vehicles,placa',
+            'vehicle_placa' => [
+                'required',
+                'string',
+                \Illuminate\Validation\Rule::exists('vehicles', 'placa')
+                    ->where('company_id', $request->user()->company_id),
+            ],
             'orders_types_id' => 'required|integer|exists:orders_types,id',
             'orders_status_id' => 'required|integer|exists:orders_status,id',
             'info' => 'nullable|string|max:1000',
@@ -65,10 +83,18 @@ class OrderServiceController extends Controller
 
         $companyId = $request->user()->company_id;
 
-        $order = DB::transaction(function () use ($validated, $companyId) {
+        // `placa` não é mais identificador único globalmente — cada empresa
+        // pode ter seu próprio veículo com a mesma placa. Resolvemos o
+        // vehicle_id pelo par (company_id, placa) desta empresa.
+        $vehicleId = \App\Models\Vehicle::withoutGlobalScope(\App\Models\Scopes\CompanyScope::class)
+            ->where('company_id', $companyId)
+            ->where('placa', $validated['vehicle_placa'])
+            ->value('id');
+
+        $order = DB::transaction(function () use ($validated, $companyId, $vehicleId) {
             $order = OrderService::create([
                 'company_id' => $companyId,
-                'vehicle_placa' => $validated['vehicle_placa'],
+                'vehicle_id' => $vehicleId,
                 'orders_types_id' => $validated['orders_types_id'],
                 'orders_status_id' => $validated['orders_status_id'],
                 'info' => $validated['info'] ?? null,
@@ -98,7 +124,7 @@ class OrderServiceController extends Controller
             if (!empty($validated['mileage'])) {
                 CarMileage::create([
                     'order_services_id' => $order->id,
-                    'vehicles_placa' => $validated['vehicle_placa'],
+                    'vehicle_id' => $vehicleId,
                     'company_id' => $companyId,
                     'mileage' => $validated['mileage'],
                 ]);
