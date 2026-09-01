@@ -41,16 +41,56 @@ return new class extends Migration
         //    MySQL não permite dropar o UNIQUE de uma coluna AUTO_INCREMENT
         //    em statements separados — o AUTO_INCREMENT precisa sempre estar
         //    vinculado a uma chave. Fazemos tudo em um único ALTER TABLE.
-        DB::statement('ALTER TABLE vehicles DROP INDEX `id`, ADD PRIMARY KEY (`id`)');
+        // Em banco limpo `placa` ainda é PK; em banco migrado a PK já foi dropada.
+        // Verificamos antes de tentar dropar para evitar erro.
+        $hasPrimaryKey = DB::select("
+            SELECT COUNT(*) as cnt
+            FROM information_schema.TABLE_CONSTRAINTS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'vehicles'
+              AND CONSTRAINT_TYPE = 'PRIMARY KEY'
+        ")[0]->cnt > 0;
+
+        $hasIdIndex = DB::select("
+            SELECT COUNT(*) as cnt
+            FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'vehicles'
+              AND INDEX_NAME = 'id'
+        ")[0]->cnt > 0;
+
+        $dropParts = [];
+        if ($hasPrimaryKey) $dropParts[] = 'DROP PRIMARY KEY';
+        if ($hasIdIndex)    $dropParts[] = 'DROP INDEX `id`';
+        $dropSql = $dropParts ? implode(', ', $dropParts) . ', ' : '';
+
+        DB::statement("ALTER TABLE vehicles {$dropSql}ADD PRIMARY KEY (`id`)");
         DB::statement('ALTER TABLE vehicles MODIFY id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT');
 
-        // 2. vehicles: substituir UNIQUE(placa) por UNIQUE(company_id, placa)
-        Schema::table('vehicles', function (Blueprint $table) {
-            $table->dropUnique('vehicles_placa_unique');
-            $table->unique(['company_id', 'placa'], 'vehicles_company_id_placa_unique');
+        // 2. Dropar FKs legadas (placa → vehicles.placa) que impedem remover o índice.
+        //    Em banco fresh essas FKs existem; em banco já migrado podem não existir.
+        $this->dropForeignIfExists('order_services', 'order_services_vehicle_placa_foreign');
+        $this->dropForeignIfExists('car_mileages',   'car_mileages_vehicles_placa_foreign');
+
+        // 3. vehicles: substituir UNIQUE(placa) por UNIQUE(company_id, placa)
+        $hasPlacaUnique = DB::select("
+            SELECT COUNT(*) as cnt FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vehicles'
+              AND INDEX_NAME = 'vehicles_placa_unique'
+        ")[0]->cnt > 0;
+
+        $hasCompanyPlacaUnique = DB::select("
+            SELECT COUNT(*) as cnt FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vehicles'
+              AND INDEX_NAME = 'vehicles_company_id_placa_unique'
+        ")[0]->cnt > 0;
+
+        Schema::table('vehicles', function (Blueprint $table) use ($hasPlacaUnique, $hasCompanyPlacaUnique) {
+            if ($hasPlacaUnique)        $table->dropUnique('vehicles_placa_unique');
+            if (!$hasCompanyPlacaUnique) $table->unique(['company_id', 'placa'], 'vehicles_company_id_placa_unique');
         });
 
-        // 3. order_services: remover coluna legada + tornar vehicle_id NOT NULL
+        // 4. order_services: remover coluna legada + tornar vehicle_id NOT NULL
         Schema::table('order_services', function (Blueprint $table) {
             if (Schema::hasColumn('order_services', 'vehicle_placa')) {
                 $table->dropColumn('vehicle_placa');
@@ -58,7 +98,7 @@ return new class extends Migration
         });
         DB::statement('ALTER TABLE order_services MODIFY vehicle_id BIGINT UNSIGNED NOT NULL');
 
-        // 4. car_mileages: idem
+        // 5. car_mileages: idem
         Schema::table('car_mileages', function (Blueprint $table) {
             if (Schema::hasColumn('car_mileages', 'vehicles_placa')) {
                 $table->dropColumn('vehicles_placa');
@@ -70,6 +110,20 @@ return new class extends Migration
     public function down(): void
     {
         // Reversão não é segura sem backup.
-        // Restaurar via: /tmp/pre_vehicle_pk_migration_backup.sql
+    }
+
+    private function dropForeignIfExists(string $table, string $fkName): void
+    {
+        $exists = DB::select("
+            SELECT COUNT(*) as cnt FROM information_schema.TABLE_CONSTRAINTS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = ?
+              AND CONSTRAINT_NAME = ?
+              AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+        ", [$table, $fkName])[0]->cnt > 0;
+
+        if ($exists) {
+            DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$fkName}`");
+        }
     }
 };

@@ -160,18 +160,24 @@ class SubscriptionController extends Controller
         //$this->authorizePermission('manage_subscription');
 
         $request->validate([
-            'plan_id' => 'required|exists:plans,id',
+            'plan_id'       => 'required|exists:plans,id',
+            'billing_cycle' => 'sometimes|in:month,year',
         ]);
 
-        $plan = Plan::findOrFail($request->plan_id);
-        $company = $request->user()->company;
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+        $plan         = Plan::findOrFail($request->plan_id);
+        $billingCycle = $request->input('billing_cycle', 'month');
+        $company      = $request->user()->company;
+        $frontendUrl  = env('FRONTEND_URL', 'http://localhost:3000');
 
-        // Validar se plano tem Stripe price ID
-        if (!$plan->stripe_price_id) {
+        // Seleciona o price_id correto conforme ciclo
+        $stripePriceId = $billingCycle === 'year'
+            ? $plan->stripe_annual_price_id
+            : $plan->stripe_price_id;
+
+        if (!$stripePriceId) {
             return response()->json([
-                'message' => 'Plano não disponível para compra',
-                'code' => 'PLAN_NOT_AVAILABLE',
+                'message' => 'Plano não disponível para compra neste ciclo',
+                'code'    => 'PLAN_NOT_AVAILABLE',
             ], 400);
         }
 
@@ -183,11 +189,12 @@ class SubscriptionController extends Controller
                 'customer_email' => $company->email,
                 'line_items' => [
                     [
-                        'price' => $plan->stripe_price_id,
+                        'price'    => $stripePriceId,
                         'quantity' => 1,
                     ],
                 ],
                 'mode' => 'subscription',
+                'allow_promotion_codes' => true,
                 'success_url' => $frontendUrl . '/#/subscription/success?session_id={CHECKOUT_SESSION_ID}&company_id=' . $company->id,
                 'cancel_url' => $frontendUrl . '/#/subscription/canceled',
                 'metadata' => [

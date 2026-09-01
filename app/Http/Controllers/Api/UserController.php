@@ -17,11 +17,12 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //$this->authorizePermission('view_users');
+        $users = User::where('company_id', $request->user()->company_id)
+            ->orderBy('name')
+            ->get();
 
-        $users = User::all();
         return response()->json($users);
     }
 

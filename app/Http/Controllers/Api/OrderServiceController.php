@@ -19,7 +19,7 @@ class OrderServiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = OrderService::with(['vehicle.carModel.maker', 'type', 'status', 'parts', 'services', 'mileages'])
+        $query = OrderService::with(['vehicle.carModel.maker', 'vehicle.client', 'type', 'status', 'parts', 'services', 'mileages'])
             ->where('company_id', auth()->user()->company_id)
             ->orderBy('id', 'desc');
 
@@ -153,12 +153,69 @@ class OrderServiceController extends Controller
         $this->authorizeCompany($orderService);
 
         $validated = $request->validate([
-            'orders_types_id' => 'sometimes|integer|exists:orders_types,id',
-            'orders_status_id' => 'sometimes|integer|exists:orders_status,id',
-            'info' => 'nullable|string|max:1000',
+            'orders_types_id'          => 'sometimes|integer|exists:orders_types,id',
+            'orders_status_id'         => 'sometimes|integer|exists:orders_status,id',
+            'info'                     => 'nullable|string|max:1000',
+            'mileage'                  => 'nullable|numeric|min:0',
+            'parts'                    => 'nullable|array',
+            'parts.*.description'      => 'required_with:parts|string|max:255',
+            'parts.*.quantity'         => 'required_with:parts|numeric|min:0',
+            'parts.*.unit_price'       => 'required_with:parts|numeric|min:0',
+            'parts.*.information'      => 'nullable|string|max:500',
+            'services'                 => 'nullable|array',
+            'services.*.description'   => 'required_with:services|string|max:255',
+            'services.*.price'         => 'required_with:services|numeric|min:0',
+            'services.*.information'   => 'nullable|string|max:500',
         ]);
 
-        $orderService->update($validated);
+        DB::transaction(function () use ($validated, $orderService, $request) {
+            $companyId = $request->user()->company_id;
+
+            $orderService->update([
+                'orders_types_id'  => $validated['orders_types_id']  ?? $orderService->orders_types_id,
+                'orders_status_id' => $validated['orders_status_id'] ?? $orderService->orders_status_id,
+                'info'             => $validated['info']              ?? $orderService->info,
+            ]);
+
+            // Substitui peças: remove as antigas e recria
+            if (array_key_exists('parts', $validated)) {
+                $orderService->parts()->delete();
+                foreach ($validated['parts'] ?? [] as $part) {
+                    Part::create([
+                        'orders_id'   => $orderService->id,
+                        'company_id'  => $companyId,
+                        'description' => $part['description'],
+                        'quantity'    => $part['quantity'],
+                        'unit_price'  => $part['unit_price'],
+                        'information' => $part['information'] ?? null,
+                    ]);
+                }
+            }
+
+            // Substitui serviços: remove os antigos e recria
+            if (array_key_exists('services', $validated)) {
+                $orderService->services()->delete();
+                foreach ($validated['services'] ?? [] as $service) {
+                    Service::create([
+                        'orders_id'   => $orderService->id,
+                        'company_id'  => $companyId,
+                        'description' => $service['description'],
+                        'price'       => $service['price'],
+                        'information' => $service['information'] ?? null,
+                    ]);
+                }
+            }
+
+            // Registra nova leitura de KM se fornecida
+            if (!empty($validated['mileage'])) {
+                CarMileage::create([
+                    'order_services_id' => $orderService->id,
+                    'vehicle_id'        => $orderService->vehicle_id,
+                    'company_id'        => $companyId,
+                    'mileage'           => $validated['mileage'],
+                ]);
+            }
+        });
 
         return response()->json(
             $orderService->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages'])

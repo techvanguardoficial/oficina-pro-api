@@ -8,14 +8,17 @@ use App\Models\Expense;
 use App\Models\OrderService;
 use App\Models\OrderStatus;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
-    public function period()
+    public function period(Request $request)
     {
-        $date = request()->query('date');
-        $startDate = request()->query('start_date');
-        $endDate = request()->query('end_date');
+        $companyId = $request->user()->company_id;
+
+        $date      = $request->query('date');
+        $startDate = $request->query('start_date');
+        $endDate   = $request->query('end_date');
 
         if (!$date && !($startDate && $endDate)) {
             return response()->json([
@@ -24,75 +27,86 @@ class TransactionController extends Controller
         }
 
         if ($date) {
-            $parsedDate = Carbon::parse($date)->toDateString();
+            $parsedDate  = Carbon::parse($date)->toDateString();
             $periodStart = Carbon::parse($parsedDate);
-            $periodEnd = Carbon::parse($parsedDate);
+            $periodEnd   = Carbon::parse($parsedDate);
         } else {
             $periodStart = Carbon::parse($startDate);
-            $periodEnd = Carbon::parse($endDate);
+            $periodEnd   = Carbon::parse($endDate);
         }
 
         $completedStatus = OrderStatus::where('status', 'Concluído')->first();
 
-        $incomes = Income::whereBetween('date', [$periodStart, $periodEnd])->sum('value');
-        $completedOrders = $this->getCompletedOrdersTotal($periodStart, $completedStatus, $periodEnd);
-        $totalIncomes = $incomes + $completedOrders;
+        $incomes         = Income::where('company_id', $companyId)
+            ->whereBetween('date', [$periodStart, $periodEnd])
+            ->sum('value');
 
-        $expenses = Expense::whereBetween('date', [$periodStart, $periodEnd])->sum('value');
+        $completedOrders = $this->getCompletedOrdersTotal($companyId, $periodStart, $completedStatus, $periodEnd);
+        $totalIncomes    = $incomes + $completedOrders;
+
+        $expenses = Expense::where('company_id', $companyId)
+            ->whereBetween('date', [$periodStart, $periodEnd])
+            ->sum('value');
 
         return response()->json([
             'period' => [
                 'start' => $periodStart->format('Y-m-d'),
-                'end' => $periodEnd->format('Y-m-d'),
+                'end'   => $periodEnd->format('Y-m-d'),
             ],
-            'incomes' => (float) $totalIncomes,
+            'incomes'  => (float) $totalIncomes,
             'expenses' => (float) $expenses,
-            'balance' => (float) ($totalIncomes - $expenses),
+            'balance'  => (float) ($totalIncomes - $expenses),
             'breakdown' => [
-                'incomes_from_records' => (float) $incomes,
+                'incomes_from_records'         => (float) $incomes,
                 'incomes_from_completed_orders' => (float) $completedOrders,
             ],
         ]);
     }
 
-    public function summary()
+    public function summary(Request $request)
     {
-        $today = Carbon::today();
-        $weekStart = Carbon::now()->startOfWeek();
-        $monthStart = Carbon::now()->startOfMonth();
-        $yearStart = Carbon::now()->startOfYear();
+        $companyId   = $request->user()->company_id;
+        $today       = Carbon::today();
+        $weekStart   = Carbon::now()->startOfWeek();
+        $monthStart  = Carbon::now()->startOfMonth();
+        $yearStart   = Carbon::now()->startOfYear();
         $completedStatus = OrderStatus::where('status', 'Concluído')->first();
 
         $incomes = [
-            'today' => Income::whereDate('date', $today)->sum('value') + $this->getCompletedOrdersTotal($today, $completedStatus),
-            'week' => Income::whereBetween('date', [$weekStart, now()])->sum('value') + $this->getCompletedOrdersTotal($weekStart, $completedStatus, now()),
-            'month' => Income::whereBetween('date', [$monthStart, now()])->sum('value') + $this->getCompletedOrdersTotal($monthStart, $completedStatus, now()),
-            'year' => Income::whereBetween('date', [$yearStart, now()])->sum('value') + $this->getCompletedOrdersTotal($yearStart, $completedStatus, now()),
+            'today' => Income::where('company_id', $companyId)->whereDate('date', $today)->sum('value')
+                + $this->getCompletedOrdersTotal($companyId, $today, $completedStatus),
+            'week'  => Income::where('company_id', $companyId)->whereBetween('date', [$weekStart, now()])->sum('value')
+                + $this->getCompletedOrdersTotal($companyId, $weekStart, $completedStatus, now()),
+            'month' => Income::where('company_id', $companyId)->whereBetween('date', [$monthStart, now()])->sum('value')
+                + $this->getCompletedOrdersTotal($companyId, $monthStart, $completedStatus, now()),
+            'year'  => Income::where('company_id', $companyId)->whereBetween('date', [$yearStart, now()])->sum('value')
+                + $this->getCompletedOrdersTotal($companyId, $yearStart, $completedStatus, now()),
         ];
 
         $expenses = [
-            'today' => Expense::whereDate('date', $today)->sum('value'),
-            'week' => Expense::whereBetween('date', [$weekStart, now()])->sum('value'),
-            'month' => Expense::whereBetween('date', [$monthStart, now()])->sum('value'),
-            'year' => Expense::whereBetween('date', [$yearStart, now()])->sum('value'),
+            'today' => Expense::where('company_id', $companyId)->whereDate('date', $today)->sum('value'),
+            'week'  => Expense::where('company_id', $companyId)->whereBetween('date', [$weekStart, now()])->sum('value'),
+            'month' => Expense::where('company_id', $companyId)->whereBetween('date', [$monthStart, now()])->sum('value'),
+            'year'  => Expense::where('company_id', $companyId)->whereBetween('date', [$yearStart, now()])->sum('value'),
         ];
 
-        $monthlyData = $this->getMonthlyData();
+        $monthlyData = $this->getMonthlyData($companyId);
 
         return response()->json([
-            'incomes' => $incomes,
-            'expenses' => $expenses,
+            'incomes'       => $incomes,
+            'expenses'      => $expenses,
             'monthly_chart' => $monthlyData,
         ]);
     }
 
-    private function getCompletedOrdersTotal($startDate, $completedStatus, $endDate = null)
+    private function getCompletedOrdersTotal(int $companyId, $startDate, $completedStatus, $endDate = null): float
     {
         if (!$completedStatus) {
             return 0;
         }
 
-        $query = OrderService::where('orders_status_id', $completedStatus->id)
+        $query = OrderService::where('company_id', $companyId)
+            ->where('orders_status_id', $completedStatus->id)
             ->with(['parts', 'services']);
 
         if ($endDate) {
@@ -106,42 +120,47 @@ class TransactionController extends Controller
             $total += $order->total;
         }
 
-        return $total;
+        return (float) $total;
     }
 
-    private function getMonthlyData()
+    private function getMonthlyData(int $companyId): array
     {
-        $months = [];
+        $months          = [];
         $completedStatus = OrderStatus::where('status', 'Concluído')->first();
 
         for ($i = 11; $i >= 0; $i--) {
-            $date = Carbon::now()->subMonths($i);
-            $monthKey = $date->format('Y-m');
+            // Parte do 1º do mês atual para evitar overflow em meses curtos
+            // (ex: 31/ago - 11 meses = 31/set → transborda para 01/out)
+            $date       = Carbon::now()->startOfMonth()->subMonths($i);
+            $monthKey   = $date->format('Y-m');
             $monthLabel = $date->format('M/Y');
 
-            $income = Income::whereYear('date', $date->year)
+            $income = Income::where('company_id', $companyId)
+                ->whereYear('date', $date->year)
                 ->whereMonth('date', $date->month)
                 ->sum('value');
 
             $completedOrdersIncome = 0;
             if ($completedStatus) {
                 $completedOrdersIncome = $this->getCompletedOrdersTotal(
+                    $companyId,
                     $date->copy()->startOfMonth(),
                     $completedStatus,
                     $date->copy()->endOfMonth()
                 );
             }
 
-            $expense = Expense::whereYear('date', $date->year)
+            $expense = Expense::where('company_id', $companyId)
+                ->whereYear('date', $date->year)
                 ->whereMonth('date', $date->month)
                 ->sum('value');
 
             $totalIncome = $income + $completedOrdersIncome;
 
             $months[] = [
-                'month' => $monthKey,
-                'label' => $monthLabel,
-                'income' => (float) $totalIncome,
+                'month'   => $monthKey,
+                'label'   => $monthLabel,
+                'income'  => (float) $totalIncome,
                 'expense' => (float) $expense,
                 'balance' => (float) ($totalIncome - $expense),
             ];

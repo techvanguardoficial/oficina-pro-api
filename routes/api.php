@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\AbacatePayWebhookController;
 use App\Http\Controllers\ClientApp\AuthController as ClientAuthController;
 use App\Http\Controllers\ClientApp\VehicleController as ClientVehicleController;
@@ -77,6 +78,10 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
+        Route::put('/profile', [AuthController::class, 'updateProfile']);
+        Route::get('/company', [CompanyController::class, 'show']);
+        Route::put('/company', [CompanyController::class, 'update']);
 
         // Subscriptions - Protegidas
         Route::get('subscription', [SubscriptionController::class, 'getCurrentSubscription']);

@@ -93,7 +93,7 @@ class VehicleController extends Controller
     public function update(Request $request, Vehicle $vehicle)
     {
         $this->authorizeCompany($vehicle);
-        $this->authorizePermission('edit_vehicle');
+        //$this->authorizePermission('edit_vehicle');
 
         $validated = $request->validate([
             'placa' => [

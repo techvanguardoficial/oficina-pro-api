@@ -25,10 +25,26 @@ class ClientController extends Controller
         $query = Client::with(['address', 'phone', 'vehicles']);
 
         if ($request->filled('search')) {
-            $term = $request->input('search');
-            $query->where(function ($q) use ($term) {
+            $term = trim($request->input('search'));
+            $words = array_filter(explode(' ', $term));
+
+            $query->where(function ($q) use ($term, $words) {
+                // Termo completo num único campo (ex: "Robson")
                 $q->where('name', 'like', "%{$term}%")
                   ->orWhere('lastname', 'like', "%{$term}%");
+
+                // Cada palavra deve aparecer em name ou lastname
+                // (cobre "Robson Gomes Pedreira" dividido entre os dois campos)
+                if (count($words) > 1) {
+                    $q->orWhere(function ($sub) use ($words) {
+                        foreach ($words as $word) {
+                            $sub->where(function ($inner) use ($word) {
+                                $inner->where('name', 'like', "%{$word}%")
+                                      ->orWhere('lastname', 'like', "%{$word}%");
+                            });
+                        }
+                    });
+                }
             });
         }
 

@@ -18,6 +18,8 @@ class PlanSeeder extends Seeder
                 'interval' => 'month',
                 'stripe_product_id' => 'prod_UHXsLn1LLu60wf',
                 'stripe_price_id' => 'price_1TIymWL2BH1WYzRkKERs9Ybv',
+                'annual_price' => 107892, // R$ 1.078,92 (10% off)
+                'stripe_annual_price_id' => 'price_1UAg9YL2BH1WYzRkcbplgx69',
                 'trial_days' => 7,
                 'max_users' => 1,
                 'max_clients' => null, // ilimitado (histórico de cadastro nunca trava)
@@ -42,6 +44,8 @@ class PlanSeeder extends Seeder
                 'interval' => 'month',
                 'stripe_product_id' => 'prod_UHXs7qYlgMqpdm',
                 'stripe_price_id' => 'price_1TIymxL2BH1WYzRkG2YRHRzV',
+                'annual_price' => 305898, // R$ 3.058,98 (15% off)
+                'stripe_annual_price_id' => 'price_1UAgAqL2BH1WYzRkORAzQBR2',
                 'trial_days' => 7,
                 'max_users' => 3,
                 'max_clients' => null, // ilimitado
@@ -66,6 +70,8 @@ class PlanSeeder extends Seeder
                 'interval' => 'month',
                 'stripe_product_id' => 'prod_UHXtlDqjInEkhg',
                 'stripe_price_id' => 'price_1TIynPL2BH1WYzRkrwhtbXx6',
+                'annual_price' => 383904, // R$ 3.839,04 (20% off)
+                'stripe_annual_price_id' => 'price_1UAgBnL2BH1WYzRky1sdQjHy',
                 'trial_days' => 7,
                 'max_users' => 10,
                 'max_clients' => null,

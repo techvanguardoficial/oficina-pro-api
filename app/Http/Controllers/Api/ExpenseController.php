@@ -14,11 +14,13 @@ class ExpenseController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //$this->authorizePermission('view_expense');
+        $expenses = Expense::with('type')
+            ->where('company_id', $request->user()->company_id)
+            ->orderBy('date', 'desc')
+            ->paginate(20);
 
-        $expenses = Expense::with('type')->paginate(20);
         return response()->json($expenses);
     }
 
