@@ -356,8 +356,7 @@ class ImportBackup extends Command
         $transformed = array_map(fn($r) => [
             'id'               => $r['id'],
             'expense_types_id' => $defaultTypeId,
-            // Preserva o nome antigo concatenado na descrição
-            'info'             => trim(($r['expense'] ? "[{$r['expense']}] " : '') . ($r['info'] ?? '')),
+            'info'             => trim($r['info'] ?: ($r['expense'] ?? '')),
             'date'             => $r['date'],
             'value'            => $r['value'],
             'company_id'       => $this->companyId,
