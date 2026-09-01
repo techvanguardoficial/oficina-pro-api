@@ -195,8 +195,8 @@ class SubscriptionController extends Controller
                 ],
                 'mode' => 'subscription',
                 'allow_promotion_codes' => true,
-                'success_url' => $frontendUrl . '/#/subscription/success?session_id={CHECKOUT_SESSION_ID}&company_id=' . $company->id,
-                'cancel_url' => $frontendUrl . '/#/subscription/canceled',
+                'success_url' => $frontendUrl . '/subscription/success?session_id={CHECKOUT_SESSION_ID}&company_id=' . $company->id,
+                'cancel_url' => $frontendUrl . '/subscription/canceled',
                 'metadata' => [
                     'company_id' => $company->id,
                     'user_id' => $request->user()->id,
