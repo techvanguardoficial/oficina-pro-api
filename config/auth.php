@@ -40,6 +40,10 @@ return [
             'driver' => 'sanctum',
             'provider' => 'users',
         ],
+        'client' => [
+            'driver' => 'sanctum',
+            'provider' => 'client_app_users',
+        ],
     ],
 
     /*
@@ -63,6 +67,10 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
+        ],
+        'client_app_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\ClientAppUser::class,
         ],
 
         // 'users' => [

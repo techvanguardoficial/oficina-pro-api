@@ -3,172 +3,239 @@
 namespace App\Http\Controllers\ClientApp;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
 use App\Models\ClientAppUser;
-use App\Models\OtpCode;
-use App\Models\Phone;
-use App\Models\Scopes\CompanyScope;
-use App\Models\Vehicle;
-use App\Services\EvolutionApiService;
+use App\Models\ClientMagicToken;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    public function requestOtp(Request $request, EvolutionApiService $evolutionApi)
+    /**
+     * Gerado pela oficina: cria o token mágico para um cliente específico.
+     * Rota protegida pelo guard da oficina (auth:user).
+     */
+    public function generateMagicLink(Request $request)
     {
-        $request->validate(['phone' => 'required|string|min:10']);
+        $request->validate(['client_id' => 'required|exists:clients,id']);
 
-        $phone = $this->normalizePhone($request->phone);
+        $client    = Client::findOrFail($request->client_id);
+        $companyId = auth('user')->user()->company_id;
 
-        // Rate limiting: máximo 3 tentativas por 15 minutos
-        $recentCount = OtpCode::where('phone', $phone)
-            ->where('created_at', '>=', now()->subMinutes(15))
-            ->count();
+        // Invalida tokens anteriores não usados para este cliente
+        ClientMagicToken::where('client_id', $client->id)
+            ->whereNull('used_at')
+            ->delete();
 
-        if ($recentCount >= 3) {
-            return response()->json([
-                'error'   => true,
-                'message' => 'Muitas tentativas. Aguarde 15 minutos.',
-                'code'    => 'TOO_MANY_ATTEMPTS',
-            ], 429);
-        }
-
-        $clientIds = $this->findAllClientIdsByPhone($phone);
-
-        if (empty($clientIds)) {
-            return response()->json([
-                'error'   => true,
-                'message' => 'Telefone não encontrado. Entre em contato com sua oficina.',
-                'code'    => 'PHONE_NOT_FOUND',
-            ], 404);
-        }
-
-        // Invalida OTPs anteriores não utilizados
-        OtpCode::where('phone', $phone)->whereNull('used_at')->update(['used_at' => now()]);
-
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        OtpCode::create([
-            'phone'      => $phone,
-            'code'       => $code,
-            'expires_at' => now()->addMinutes(10),
+        $token = ClientMagicToken::create([
+            'token'      => Str::random(64),
+            'client_id'  => $client->id,
+            'company_id' => $companyId,
+            'expires_at' => now()->addDays(7),
         ]);
 
-        $sent = $evolutionApi->sendOtp($phone, $code);
+        $frontendUrl = env('CLIENT_PORTAL_URL', 'http://localhost:3001');
+        $link = $frontendUrl . '/access/' . $token->token;
 
-        if (!$sent) {
-            return response()->json([
-                'error'   => true,
-                'message' => 'Erro ao enviar o código. Tente novamente.',
-                'code'    => 'SEND_FAILED',
-            ], 500);
-        }
-
-        return response()->json(['message' => 'Código enviado via WhatsApp.']);
+        return response()->json([
+            'link'       => $link,
+            'expires_at' => $token->expires_at,
+            'client'     => [
+                'id'    => $client->id,
+                'name'  => $client->name,
+                'phone' => $client->phone?->phone_one ?? '',
+            ],
+        ]);
     }
 
-    public function verifyOtp(Request $request)
+    /**
+     * Valida o token mágico e retorna os dados pré-preenchidos do cliente.
+     * Rota pública.
+     */
+    public function verifyMagicToken(Request $request)
     {
-        $request->validate([
-            'phone' => 'required|string|min:10',
-            'code'  => 'required|string|size:6',
-        ]);
+        $request->validate(['token' => 'required|string']);
 
-        $phone = $this->normalizePhone($request->phone);
-
-        $otp = OtpCode::where('phone', $phone)
-            ->whereNull('used_at')
-            ->where('expires_at', '>', now())
-            ->latest()
+        $magicToken = ClientMagicToken::where('token', $request->token)
+            ->with(['client.phone', 'client.address'])
             ->first();
 
-        if (!$otp || $otp->code !== $request->code) {
+        if (!$magicToken || !$magicToken->isValid()) {
             return response()->json([
-                'error'   => true,
-                'message' => 'Código inválido ou expirado.',
-                'code'    => 'INVALID_OTP',
+                'message' => 'Link inválido ou expirado.',
+                'code'    => 'INVALID_TOKEN',
             ], 422);
         }
 
-        $otp->markAsUsed();
+        $client = $magicToken->client;
 
-        // Busca todos os client_ids deste telefone em todas as oficinas
-        $clientIds = $this->findAllClientIdsByPhone($phone);
-
-        $clientAppUser = ClientAppUser::firstOrCreate(['phone' => $phone]);
-        $clientAppUser->update(['last_login_at' => now()]);
-
-        // Vincula todos os registros de cliente sem remover os já existentes
-        $clientAppUser->clients()->syncWithoutDetaching($clientIds);
-
-        $token = $clientAppUser->createToken('client-app', ['*'], now()->addDays(30))->plainTextToken;
+        // Verifica se já existe conta vinculada a este telefone ou email
+        $existingUser = ClientAppUser::where('phone', $client->phone?->phone_one)
+            ->orWhere(function ($q) use ($client) {
+                if ($client->email) $q->where('email', $client->email);
+            })
+            ->first();
 
         return response()->json([
-            'token'           => $token,
-            'workshops_count' => count($clientIds),
+            'token_valid'      => true,
+            'already_has_account' => (bool) $existingUser,
+            'prefill' => [
+                'name'    => trim($client->name . ' ' . ($client->lastname ?? '')),
+                'email'   => $client->email ?? '',
+                'phone'   => $client->phone?->phone_one ?? '',
+                'cpf'     => $client->cpf_cnpj ?? '',
+            ],
         ]);
     }
 
-    public function me(Request $request)
+    /**
+     * Completa o onboarding: cria a conta e vincula ao(s) cliente(s) da oficina.
+     * Rota pública (chamada após verificar o token mágico).
+     */
+    public function completeSignup(Request $request)
     {
-        $clientAppUser = $request->user();
-
-        $clients = $clientAppUser->clients()
-            ->with('company:id,name,fantasy_name,phone')
-            ->get();
-
-        $clientIds = $clients->pluck('id');
-
-        $vehiclesCount = Vehicle::withoutGlobalScope(CompanyScope::class)
-            ->whereIn('clients_id', $clientIds)
-            ->distinct('placa')
-            ->count('placa');
-
-        return response()->json([
-            'phone'          => $clientAppUser->phone,
-            'last_login_at'  => $clientAppUser->last_login_at,
-            'vehicles_count' => $vehiclesCount,
-            'workshops'      => $clients->map(fn($c) => [
-                'client_id'    => $c->id,
-                'name'         => $c->full_name,
-                'email'        => $c->email,
-                'company'      => [
-                    'id'           => $c->company->id,
-                    'name'         => $c->company->name,
-                    'fantasy_name' => $c->company->fantasy_name,
-                    'phone'        => $c->company->phone,
-                ],
-            ]),
+        $request->validate([
+            'token'    => 'required|string',
+            'name'     => 'required|string|max:100',
+            'email'    => 'required|email|max:150',
+            'phone'    => 'required|string|max:20',
+            'password' => 'required|string|min:6|confirmed',
+            'cpf'      => 'nullable|string|max:14',
         ]);
-    }
 
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logout realizado com sucesso.']);
-    }
+        $magicToken = ClientMagicToken::where('token', $request->token)
+            ->whereNull('used_at')
+            ->where('expires_at', '>', now())
+            ->firstOrFail();
 
-    // Retorna todos os client_ids com aquele telefone em qualquer oficina
-    private function findAllClientIdsByPhone(string $phone): array
-    {
-        $last11 = substr($phone, -11);
-
-        return Phone::where(function ($q) use ($last11) {
-            $q->whereRaw("REGEXP_REPLACE(phone_one, '[^0-9]', '') LIKE ?", ["%{$last11}"])
-              ->orWhereRaw("REGEXP_REPLACE(phone_two, '[^0-9]', '') LIKE ?", ["%{$last11}"])
-              ->orWhereRaw("REGEXP_REPLACE(phone_three, '[^0-9]', '') LIKE ?", ["%{$last11}"]);
-        })->pluck('clients_id')->unique()->values()->toArray();
-    }
-
-    // Normaliza para formato Evolution API: 5511999999999
-    private function normalizePhone(string $phone): string
-    {
-        $digits = preg_replace('/\D/', '', $phone);
-        $digits = ltrim($digits, '0');
-
-        if (!str_starts_with($digits, '55')) {
-            $digits = '55' . $digits;
+        // Evita duplicidade por email
+        if (ClientAppUser::where('email', $request->email)->exists()) {
+            return response()->json([
+                'message' => 'Este e-mail já está em uso.',
+                'code'    => 'EMAIL_TAKEN',
+            ], 422);
         }
 
-        return $digits;
+        $appUser = ClientAppUser::firstOrCreate(
+            ['phone' => $request->phone],
+            [
+                'name'                 => $request->name,
+                'email'                => $request->email,
+                'password'             => Hash::make($request->password),
+                'cpf'                  => $request->cpf,
+                'onboarding_completed' => true,
+                'last_login_at'        => now(),
+            ]
+        );
+
+        // Se já existia, atualiza dados e marca onboarding completo
+        if (!$appUser->wasRecentlyCreated) {
+            $appUser->update([
+                'name'                 => $request->name,
+                'email'                => $request->email,
+                'password'             => Hash::make($request->password),
+                'onboarding_completed' => true,
+                'last_login_at'        => now(),
+            ]);
+        }
+
+        // Vincula ao cliente da oficina que gerou o token (se ainda não vinculado)
+        $appUser->clients()->syncWithoutDetaching([$magicToken->client_id]);
+
+        // Marca token como usado
+        $magicToken->update(['used_at' => now()]);
+
+        // Tenta vincular outros clientes com mesmo CPF/telefone em outras oficinas
+        $this->linkMatchingClients($appUser);
+
+        $accessToken = $appUser->createToken('client-portal', ['client'])->plainTextToken;
+
+        return response()->json([
+            'message'      => 'Conta criada com sucesso!',
+            'access_token' => $accessToken,
+            'user'         => $this->userResource($appUser),
+        ], 201);
+    }
+
+    /**
+     * Login com email + senha.
+     */
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        $appUser = ClientAppUser::where('email', $request->email)->first();
+
+        if (!$appUser || !Hash::check($request->password, $appUser->password)) {
+            return response()->json([
+                'message' => 'E-mail ou senha incorretos.',
+                'code'    => 'INVALID_CREDENTIALS',
+            ], 401);
+        }
+
+        if (!$appUser->onboarding_completed) {
+            return response()->json([
+                'message' => 'Complete seu cadastro pelo link enviado pela oficina.',
+                'code'    => 'ONBOARDING_PENDING',
+            ], 403);
+        }
+
+        $appUser->update(['last_login_at' => now()]);
+
+        // Tenta vincular novos clientes que tenham surgido com mesmo CPF/telefone
+        $this->linkMatchingClients($appUser);
+
+        $accessToken = $appUser->createToken('client-portal', ['client'])->plainTextToken;
+
+        return response()->json([
+            'access_token' => $accessToken,
+            'user'         => $this->userResource($appUser),
+        ]);
+    }
+
+    /**
+     * Logout.
+     */
+    public function logout(Request $request)
+    {
+        $request->user('client')?->currentAccessToken()->delete();
+        return response()->json(['message' => 'Logout realizado.']);
+    }
+
+    /**
+     * Vincula automaticamente clientes de outras oficinas com mesmo CPF ou telefone.
+     */
+    private function linkMatchingClients(ClientAppUser $appUser): void
+    {
+        $matchIds = Client::withoutGlobalScopes()
+            ->where(function ($q) use ($appUser) {
+                if ($appUser->cpf) {
+                    $q->where('cpf_cnpj', $appUser->cpf);
+                }
+            })
+            ->orWhereHas('phone', fn($q) => $q->where('phone_one', $appUser->phone))
+            ->pluck('id')
+            ->toArray();
+
+        if (!empty($matchIds)) {
+            $appUser->clients()->syncWithoutDetaching($matchIds);
+        }
+    }
+
+    private function userResource(ClientAppUser $user): array
+    {
+        return [
+            'id'                   => $user->id,
+            'name'                 => $user->name,
+            'email'                => $user->email,
+            'phone'                => $user->phone,
+            'cpf'                  => $user->cpf,
+            'onboarding_completed' => $user->onboarding_completed,
+        ];
     }
 }

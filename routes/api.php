@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\ClientApp\PortalController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\AddressController;
@@ -29,24 +30,28 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\AbacatePayWebhookController;
 use App\Http\Controllers\ClientApp\AuthController as ClientAuthController;
-use App\Http\Controllers\ClientApp\VehicleController as ClientVehicleController;
 
 Route::prefix('v1')->group(function () {
 
-    // ─── Client App (app do proprietário do veículo) ───────────────────────
-    Route::prefix('client-app')->group(function () {
+    // ─── Portal do Cliente ─────────────────────────────────────────────────
+    Route::prefix('client')->group(function () {
 
         // Públicas
-        Route::post('auth/request-otp', [ClientAuthController::class, 'requestOtp']);
-        Route::post('auth/verify-otp',  [ClientAuthController::class, 'verifyOtp']);
+        Route::post('auth/verify-token',    [ClientAuthController::class, 'verifyMagicToken']);
+        Route::post('auth/complete-signup', [ClientAuthController::class, 'completeSignup']);
+        Route::post('auth/login',           [ClientAuthController::class, 'login']);
 
-        // Protegidas — requer token Sanctum de ClientAppUser
-        Route::middleware(['auth:sanctum', 'client.app'])->group(function () {
-            Route::get('auth/me',      [ClientAuthController::class, 'me']);
+        // Protegidas — requer token Sanctum de ClientAppUser (guard client)
+        Route::middleware('auth:client')->group(function () {
             Route::post('auth/logout', [ClientAuthController::class, 'logout']);
 
-            Route::get('vehicles',          [ClientVehicleController::class, 'index']);
-            Route::get('vehicles/{placa}',  [ClientVehicleController::class, 'show']);
+            Route::get('me',  [PortalController::class, 'me']);
+            Route::put('me',  [PortalController::class, 'updateMe']);
+
+            Route::get('vehicles',                           [PortalController::class, 'vehicles']);
+            Route::get('vehicles/{placa}',                   [PortalController::class, 'vehicle']);
+            Route::get('vehicles/{placa}/workshops',         [PortalController::class, 'vehicleWorkshops']);
+            Route::get('vehicles/{placa}/history',           [PortalController::class, 'vehicleHistory']);
         });
     });
     // ───────────────────────────────────────────────────────────────────────
@@ -130,6 +135,10 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard/top-vehicle-models', [DashboardController::class, 'topVehicleModels']);
         Route::get('dashboard/top-clients', [DashboardController::class, 'topClients']);
         Route::get('dashboard/in-progress-orders', [DashboardController::class, 'inProgressOrders']);
+
+        // Gera link mágico para o cliente (chamado pela oficina)
+        Route::post('client-portal/magic-link', [ClientAuthController::class, 'generateMagicLink']);
     });
 
 });
+
