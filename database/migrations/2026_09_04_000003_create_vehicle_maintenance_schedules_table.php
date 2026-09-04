@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        Schema::create('vehicle_maintenance_schedules', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('client_app_user_id')->constrained('client_app_users')->cascadeOnDelete();
+            $table->string('placa', 10);
+            $table->string('description');
+            $table->unsignedInteger('interval_km')->nullable();
+            $table->unsignedSmallInteger('interval_months')->nullable();
+            $table->timestamps();
+
+            $table->index(['client_app_user_id', 'placa']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('vehicle_maintenance_schedules');
+    }
+};

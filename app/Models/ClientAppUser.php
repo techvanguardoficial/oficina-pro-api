@@ -18,6 +18,7 @@ class ClientAppUser extends Authenticatable
         'password',
         'cpf',
         'phone',
+        'avatar',
         'device_token',
         'email_verified_at',
         'onboarding_completed',

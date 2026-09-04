@@ -45,13 +45,19 @@ Route::prefix('v1')->group(function () {
         Route::middleware('auth:client')->group(function () {
             Route::post('auth/logout', [ClientAuthController::class, 'logout']);
 
-            Route::get('me',  [PortalController::class, 'me']);
-            Route::put('me',  [PortalController::class, 'updateMe']);
+            Route::get('me',           [PortalController::class, 'me']);
+            Route::put('me',           [PortalController::class, 'updateMe']);
+            Route::post('me/avatar',   [PortalController::class, 'updateAvatar']);
 
-            Route::get('vehicles',                           [PortalController::class, 'vehicles']);
-            Route::get('vehicles/{placa}',                   [PortalController::class, 'vehicle']);
-            Route::get('vehicles/{placa}/workshops',         [PortalController::class, 'vehicleWorkshops']);
-            Route::get('vehicles/{placa}/history',           [PortalController::class, 'vehicleHistory']);
+            Route::get('vehicles',                                        [PortalController::class, 'vehicles']);
+            Route::get('vehicles/{placa}',                                [PortalController::class, 'vehicle']);
+            Route::post('vehicles/{placa}/photo',                         [PortalController::class, 'updateVehiclePhoto']);
+            Route::get('vehicles/{placa}/workshops',                      [PortalController::class, 'vehicleWorkshops']);
+            Route::get('vehicles/{placa}/history',                        [PortalController::class, 'vehicleHistory']);
+            Route::get('vehicles/{placa}/maintenance',                    [PortalController::class, 'maintenanceSchedules']);
+            Route::post('vehicles/{placa}/maintenance',                   [PortalController::class, 'storeMaintenanceSchedule']);
+            Route::put('vehicles/{placa}/maintenance/{id}',               [PortalController::class, 'updateMaintenanceSchedule']);
+            Route::delete('vehicles/{placa}/maintenance/{id}',            [PortalController::class, 'deleteMaintenanceSchedule']);
         });
     });
     // ───────────────────────────────────────────────────────────────────────

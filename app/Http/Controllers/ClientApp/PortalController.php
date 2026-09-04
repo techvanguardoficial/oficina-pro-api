@@ -4,10 +4,13 @@ namespace App\Http\Controllers\ClientApp;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientAppUser;
+use App\Models\ClientVehiclePhoto;
 use App\Models\OrderService;
 use App\Models\Vehicle;
+use App\Models\VehicleMaintenanceSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class PortalController extends Controller
 {
@@ -16,9 +19,8 @@ class PortalController extends Controller
         return auth('client')->user();
     }
 
-    /**
-     * Dados do usuário logado.
-     */
+    // ─── Perfil ──────────────────────────────────────────────────────────────
+
     public function me()
     {
         $user = $this->appUser();
@@ -28,13 +30,11 @@ class PortalController extends Controller
             'email'                => $user->email,
             'phone'                => $user->phone,
             'cpf'                  => $user->cpf,
+            'avatar'               => $user->avatar ? Storage::url($user->avatar) : null,
             'onboarding_completed' => $user->onboarding_completed,
         ]);
     }
 
-    /**
-     * Atualiza dados pessoais.
-     */
     public function updateMe(Request $request)
     {
         $user = $this->appUser();
@@ -57,28 +57,46 @@ class PortalController extends Controller
         return response()->json(['message' => 'Dados atualizados.', 'user' => $user->fresh()]);
     }
 
-    /**
-     * Lista todos os veículos vinculados ao usuário (cross-oficina).
-     */
+    public function updateAvatar(Request $request)
+    {
+        $request->validate(['photo' => 'required|image|max:5120']);
+
+        $user = $this->appUser();
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('photo')->store('client-avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return response()->json(['avatar' => Storage::url($path)]);
+    }
+
+    // ─── Veículos ────────────────────────────────────────────────────────────
+
     public function vehicles()
     {
-        $clientIds = $this->appUser()->clientIds();
+        $user      = $this->appUser();
+        $clientIds = $user->clientIds();
+
+        $photos = ClientVehiclePhoto::where('client_app_user_id', $user->id)
+            ->get()
+            ->keyBy('placa');
 
         $vehicles = Vehicle::withoutGlobalScopes()
             ->whereIn('clients_id', $clientIds)
             ->with(['carModel.maker'])
             ->get()
-            ->map(fn($v) => $this->vehicleResource($v));
+            ->map(fn($v) => $this->vehicleResource($v, $photos->get($v->placa)));
 
         return response()->json($vehicles);
     }
 
-    /**
-     * Detalhe de um veículo pela placa.
-     */
     public function vehicle(string $placa)
     {
-        $clientIds = $this->appUser()->clientIds();
+        $user      = $this->appUser();
+        $clientIds = $user->clientIds();
 
         $vehicle = Vehicle::withoutGlobalScopes()
             ->whereIn('clients_id', $clientIds)
@@ -86,23 +104,138 @@ class PortalController extends Controller
             ->with(['carModel.maker'])
             ->firstOrFail();
 
-        return response()->json($this->vehicleResource($vehicle));
+        $photo = ClientVehiclePhoto::where('client_app_user_id', $user->id)
+            ->where('placa', strtoupper($placa))
+            ->first();
+
+        return response()->json($this->vehicleResource($vehicle, $photo));
     }
 
-    /**
-     * Histórico completo de manutenção de um veículo.
-     */
-    /**
-     * Lista as oficinas que atenderam este veículo.
-     */
+    public function updateVehiclePhoto(Request $request, string $placa)
+    {
+        $request->validate(['photo' => 'required|image|max:5120']);
+
+        $user      = $this->appUser();
+        $clientIds = $user->clientIds();
+
+        // Ensure vehicle belongs to user
+        Vehicle::withoutGlobalScopes()
+            ->whereIn('clients_id', $clientIds)
+            ->where('placa', strtoupper($placa))
+            ->firstOrFail();
+
+        $record = ClientVehiclePhoto::where('client_app_user_id', $user->id)
+            ->where('placa', strtoupper($placa))
+            ->first();
+
+        if ($record) {
+            Storage::disk('public')->delete($record->photo_path);
+        }
+
+        $path = $request->file('photo')->store('vehicle-photos', 'public');
+
+        ClientVehiclePhoto::updateOrCreate(
+            ['client_app_user_id' => $user->id, 'placa' => strtoupper($placa)],
+            ['photo_path' => $path]
+        );
+
+        return response()->json(['photo' => Storage::url($path)]);
+    }
+
+    // ─── Lembretes de Manutenção ─────────────────────────────────────────────
+
+    public function maintenanceSchedules(string $placa)
+    {
+        $user      = $this->appUser();
+        $clientIds = $user->clientIds();
+
+        Vehicle::withoutGlobalScopes()
+            ->whereIn('clients_id', $clientIds)
+            ->where('placa', strtoupper($placa))
+            ->firstOrFail();
+
+        $schedules = VehicleMaintenanceSchedule::where('client_app_user_id', $user->id)
+            ->where('placa', strtoupper($placa))
+            ->orderBy('description')
+            ->get();
+
+        return response()->json($schedules);
+    }
+
+    public function storeMaintenanceSchedule(Request $request, string $placa)
+    {
+        $request->validate([
+            'description'     => 'required|string|max:100',
+            'interval_km'     => 'nullable|integer|min:1',
+            'interval_months' => 'nullable|integer|min:1',
+        ]);
+
+        $user      = $this->appUser();
+        $clientIds = $user->clientIds();
+
+        Vehicle::withoutGlobalScopes()
+            ->whereIn('clients_id', $clientIds)
+            ->where('placa', strtoupper($placa))
+            ->firstOrFail();
+
+        $schedule = VehicleMaintenanceSchedule::create([
+            'client_app_user_id' => $user->id,
+            'placa'              => strtoupper($placa),
+            'description'        => $request->description,
+            'interval_km'        => $request->interval_km,
+            'interval_months'    => $request->interval_months,
+        ]);
+
+        return response()->json($schedule, 201);
+    }
+
+    public function updateMaintenanceSchedule(Request $request, string $placa, int $id)
+    {
+        $request->validate([
+            'description'     => 'sometimes|string|max:100',
+            'interval_km'     => 'nullable|integer|min:1',
+            'interval_months' => 'nullable|integer|min:1',
+        ]);
+
+        $user = $this->appUser();
+
+        $schedule = VehicleMaintenanceSchedule::where('client_app_user_id', $user->id)
+            ->where('placa', strtoupper($placa))
+            ->findOrFail($id);
+
+        $schedule->update($request->only(['description', 'interval_km', 'interval_months']));
+
+        return response()->json($schedule->fresh());
+    }
+
+    public function deleteMaintenanceSchedule(string $placa, int $id)
+    {
+        $user = $this->appUser();
+
+        $schedule = VehicleMaintenanceSchedule::where('client_app_user_id', $user->id)
+            ->where('placa', strtoupper($placa))
+            ->findOrFail($id);
+
+        $schedule->delete();
+
+        return response()->json(['message' => 'Lembrete removido.']);
+    }
+
+    // ─── Oficinas / Histórico ────────────────────────────────────────────────
+
     public function vehicleWorkshops(string $placa)
     {
-        $clientIds = $this->appUser()->clientIds();
+        $user      = $this->appUser();
+        $clientIds = $user->clientIds();
 
         $vehicle = Vehicle::withoutGlobalScopes()
             ->whereIn('clients_id', $clientIds)
             ->where('placa', strtoupper($placa))
             ->firstOrFail();
+
+        $photo = ClientVehiclePhoto::where('client_app_user_id', $user->id)
+            ->where('placa', strtoupper($placa))
+            ->first();
 
         $workshops = OrderService::withoutGlobalScopes()
             ->where('vehicle_id', $vehicle->id)
@@ -121,7 +254,7 @@ class PortalController extends Controller
             ]);
 
         return response()->json([
-            'vehicle'   => $this->vehicleResource($vehicle),
+            'vehicle'   => $this->vehicleResource($vehicle, $photo),
             'workshops' => $workshops,
         ]);
     }
@@ -166,7 +299,9 @@ class PortalController extends Controller
         ]);
     }
 
-    private function vehicleResource(Vehicle $v): array
+    // ─── Resources ───────────────────────────────────────────────────────────
+
+    private function vehicleResource(Vehicle $v, ?ClientVehiclePhoto $photo = null): array
     {
         return [
             'placa'  => $v->placa,
@@ -176,31 +311,31 @@ class PortalController extends Controller
             'color'  => $v->color,
             'km'     => $v->current_km,
             'vin'    => $v->chassis,
+            'photo'  => $photo ? Storage::url($photo->photo_path) : null,
         ];
     }
 
     private function orderResource(OrderService $o): array
     {
-        // Mirror workshop frontend: quantity × unit_price (price field may be stale on old records)
         $totalParts    = $o->parts->sum(fn($p) => (float)$p->quantity * (float)$p->unit_price);
         $totalServices = $o->services->sum('price');
 
         return [
-            'id'         => $o->id,
-            'date'       => $o->created_at?->toDateString(),
-            'status'     => $o->status?->status ?? '',
-            'type'       => $o->type?->type ?? '',
-            'km'         => $o->mileages->last()?->mileage ?? 0,
-            'info'       => $o->info,
-            'oficina'    => $o->company?->fantasy_name ?? $o->company?->name ?? '',
-            'total'      => $totalParts + $totalServices,
-            'parts'      => $o->parts->map(fn($p) => [
+            'id'       => $o->id,
+            'date'     => $o->created_at?->toDateString(),
+            'status'   => $o->status?->status ?? '',
+            'type'     => $o->type?->type ?? '',
+            'km'       => $o->mileages->last()?->mileage ?? 0,
+            'info'     => $o->info,
+            'oficina'  => $o->company?->fantasy_name ?? $o->company?->name ?? '',
+            'total'    => $totalParts + $totalServices,
+            'parts'    => $o->parts->map(fn($p) => [
                 'description' => $p->description,
                 'quantity'    => (int) $p->quantity,
                 'unit_value'  => (float) $p->unit_price,
                 'total'       => (float) $p->quantity * (float) $p->unit_price,
             ]),
-            'services'   => $o->services->map(fn($s) => [
+            'services' => $o->services->map(fn($s) => [
                 'description' => $s->description,
                 'value'       => $s->price,
             ]),
