@@ -9,6 +9,7 @@ use App\Models\OrderService;
 use App\Models\Vehicle;
 use App\Models\VehicleMaintenanceSchedule;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,6 +18,26 @@ class PortalController extends Controller
     private function appUser(): ClientAppUser
     {
         return auth('client')->user();
+    }
+
+    private function disk(): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return Storage::disk('supabase');
+    }
+
+    private function storageUrl(string $path): string
+    {
+        return $this->disk()->url($path);
+    }
+
+    private function storeFile(UploadedFile $file, string $directory): string
+    {
+        return $file->store($directory, 'supabase');
+    }
+
+    private function deleteFile(string $path): void
+    {
+        $this->disk()->delete($path);
     }
 
     // ─── Perfil ──────────────────────────────────────────────────────────────
@@ -30,7 +51,7 @@ class PortalController extends Controller
             'email'                => $user->email,
             'phone'                => $user->phone,
             'cpf'                  => $user->cpf,
-            'avatar'               => $user->avatar ? Storage::url($user->avatar) : null,
+            'avatar'               => $user->avatar ? $this->storageUrl($user->avatar) : null,
             'onboarding_completed' => $user->onboarding_completed,
         ]);
     }
@@ -64,13 +85,13 @@ class PortalController extends Controller
         $user = $this->appUser();
 
         if ($user->avatar) {
-            Storage::disk('public')->delete($user->avatar);
+            $this->deleteFile($user->avatar);
         }
 
-        $path = $request->file('photo')->store('client-avatars', 'public');
+        $path = $this->storeFile($request->file('photo'), 'client-avatars');
         $user->update(['avatar' => $path]);
 
-        return response()->json(['avatar' => Storage::url($path)]);
+        return response()->json(['avatar' => $this->storageUrl($path)]);
     }
 
     // ─── Veículos ────────────────────────────────────────────────────────────
@@ -118,7 +139,6 @@ class PortalController extends Controller
         $user      = $this->appUser();
         $clientIds = $user->clientIds();
 
-        // Ensure vehicle belongs to user
         Vehicle::withoutGlobalScopes()
             ->whereIn('clients_id', $clientIds)
             ->where('placa', strtoupper($placa))
@@ -129,17 +149,17 @@ class PortalController extends Controller
             ->first();
 
         if ($record) {
-            Storage::disk('public')->delete($record->photo_path);
+            $this->deleteFile($record->photo_path);
         }
 
-        $path = $request->file('photo')->store('vehicle-photos', 'public');
+        $path = $this->storeFile($request->file('photo'), 'vehicle-photos');
 
         ClientVehiclePhoto::updateOrCreate(
             ['client_app_user_id' => $user->id, 'placa' => strtoupper($placa)],
             ['photo_path' => $path]
         );
 
-        return response()->json(['photo' => Storage::url($path)]);
+        return response()->json(['photo' => $this->storageUrl($path)]);
     }
 
     // ─── Lembretes de Manutenção ─────────────────────────────────────────────
@@ -311,7 +331,7 @@ class PortalController extends Controller
             'color'  => $v->color,
             'km'     => $v->current_km,
             'vin'    => $v->chassis,
-            'photo'  => $photo ? Storage::url($photo->photo_path) : null,
+            'photo'  => $photo ? $this->storageUrl($photo->photo_path) : null,
         ];
     }
 
