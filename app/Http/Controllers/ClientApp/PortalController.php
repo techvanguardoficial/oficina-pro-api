@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\ClientApp;
 
 use App\Http\Controllers\Controller;
+use App\Models\CarMileage;
 use App\Models\ClientAppUser;
 use App\Models\ClientVehiclePhoto;
 use App\Models\OrderService;
 use App\Models\Vehicle;
 use App\Models\VehicleMaintenanceSchedule;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -169,15 +171,55 @@ class PortalController extends Controller
         $user      = $this->appUser();
         $clientIds = $user->clientIds();
 
-        Vehicle::withoutGlobalScopes()
+        $vehicle = Vehicle::withoutGlobalScopes()
             ->whereIn('clients_id', $clientIds)
             ->where('placa', strtoupper($placa))
             ->firstOrFail();
 
+        // Last mileage entry = KM + date at last workshop visit
+        $lastMileage = CarMileage::withoutGlobalScopes()
+            ->where('vehicle_id', $vehicle->id)
+            ->latest('created_at')
+            ->first();
+
+        $currentKm       = (int) ($vehicle->current_km ?? $vehicle->km ?? 0);
+        $lastServiceKm   = $lastMileage ? (int) $lastMileage->mileage : null;
+        $lastServiceDate = $lastMileage ? Carbon::parse($lastMileage->created_at) : null;
+        $monthsSince     = $lastServiceDate ? (int) $lastServiceDate->diffInMonths(now()) : null;
+        $kmSince         = ($lastServiceKm !== null) ? max(0, $currentKm - $lastServiceKm) : null;
+
         $schedules = VehicleMaintenanceSchedule::where('client_app_user_id', $user->id)
             ->where('placa', strtoupper($placa))
             ->orderBy('description')
-            ->get();
+            ->get()
+            ->map(function ($s) use ($kmSince, $monthsSince) {
+                $status = 'no_data';
+
+                if ($kmSince !== null || $monthsSince !== null) {
+                    $overdue  = false;
+                    $dueSoon  = false;
+
+                    if ($s->interval_km && $kmSince !== null) {
+                        $ratio = $kmSince / $s->interval_km;
+                        if ($ratio >= 1)   $overdue = true;
+                        elseif ($ratio >= 0.8) $dueSoon = true;
+                    }
+
+                    if ($s->interval_months && $monthsSince !== null) {
+                        $ratio = $monthsSince / $s->interval_months;
+                        if ($ratio >= 1)   $overdue = true;
+                        elseif ($ratio >= 0.8) $dueSoon = true;
+                    }
+
+                    $status = $overdue ? 'overdue' : ($dueSoon ? 'due_soon' : 'ok');
+                }
+
+                return array_merge($s->toArray(), [
+                    'status'       => $status,
+                    'km_since'     => $kmSince,
+                    'months_since' => $monthsSince,
+                ]);
+            });
 
         return response()->json($schedules);
     }
