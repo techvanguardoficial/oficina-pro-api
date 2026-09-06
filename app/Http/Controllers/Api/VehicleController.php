@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\AuthorizesCompany;
 use App\Http\Traits\ChecksPlanLimits;
 use App\Http\Traits\HasRoleAndPermissions;
+use App\Models\ClientVehiclePhoto;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 
@@ -84,7 +85,15 @@ class VehicleController extends Controller
         //$this->authorizePermission('view_vehicles');
 
         $this->authorizeCompany($vehicle);
-        return response()->json($vehicle->load(['client', 'carModel.maker', 'company', 'orderServices', 'mileages']));
+
+        $vehicleData = $vehicle->load(['client', 'carModel.maker', 'company', 'orderServices', 'mileages'])->toArray();
+
+        $clientPhoto = ClientVehiclePhoto::where('placa', strtoupper($vehicle->placa))->latest()->first();
+        $vehicleData['client_photo_url'] = $clientPhoto
+            ? rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($clientPhoto->photo_path, '/')
+            : null;
+
+        return response()->json($vehicleData);
     }
 
     /**
