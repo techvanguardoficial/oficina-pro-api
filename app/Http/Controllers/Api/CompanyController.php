@@ -4,13 +4,31 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
+    private function disk()
+    {
+        return Storage::disk('supabase');
+    }
+
+    private function logoUrl(?string $path): ?string
+    {
+        return $path ? $this->disk()->url($path) : null;
+    }
+
+    private function companyResource($company): array
+    {
+        $data = $company->toArray();
+        $data['logo_url'] = $this->logoUrl($company->logo);
+        return $data;
+    }
+
     public function show(Request $request)
     {
         $company = $request->user()->company;
-        return response()->json($company);
+        return response()->json($this->companyResource($company));
     }
 
     public function update(Request $request)
@@ -26,6 +44,25 @@ class CompanyController extends Controller
 
         $company->update($validated);
 
-        return response()->json(['message' => 'Configurações salvas com sucesso.', 'company' => $company]);
+        return response()->json([
+            'message' => 'Configurações salvas com sucesso.',
+            'company' => $this->companyResource($company->fresh()),
+        ]);
+    }
+
+    public function uploadLogo(Request $request)
+    {
+        $request->validate(['logo' => 'required|image|max:5120']);
+
+        $company = $request->user()->company;
+
+        if ($company->logo) {
+            $this->disk()->delete($company->logo);
+        }
+
+        $path = $request->file('logo')->store('company-logos', 'supabase');
+        $company->update(['logo' => $path]);
+
+        return response()->json(['logo_url' => $this->logoUrl($path)]);
     }
 }

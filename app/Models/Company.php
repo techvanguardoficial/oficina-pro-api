@@ -19,6 +19,7 @@ class Company extends Model
         'email',
         'phone',
         'status',
+        'logo',
     ];
 
     public function users(): HasMany

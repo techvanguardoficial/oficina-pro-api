@@ -93,6 +93,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::get('/company', [CompanyController::class, 'show']);
         Route::put('/company', [CompanyController::class, 'update']);
+        Route::post('/company/logo', [CompanyController::class, 'uploadLogo']);
 
         // Subscriptions - Protegidas
         Route::get('subscription', [SubscriptionController::class, 'getCurrentSubscription']);
