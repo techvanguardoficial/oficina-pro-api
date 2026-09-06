@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 class Company extends Model
 {
@@ -21,6 +22,13 @@ class Company extends Model
         'status',
         'logo',
     ];
+
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->logo ? Storage::disk('supabase')->url($this->logo) : null;
+    }
 
     public function users(): HasMany
     {

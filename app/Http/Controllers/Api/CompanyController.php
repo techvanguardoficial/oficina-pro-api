@@ -8,27 +8,9 @@ use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
-    private function disk()
-    {
-        return Storage::disk('supabase');
-    }
-
-    private function logoUrl(?string $path): ?string
-    {
-        return $path ? $this->disk()->url($path) : null;
-    }
-
-    private function companyResource($company): array
-    {
-        $data = $company->toArray();
-        $data['logo_url'] = $this->logoUrl($company->logo);
-        return $data;
-    }
-
     public function show(Request $request)
     {
-        $company = $request->user()->company;
-        return response()->json($this->companyResource($company));
+        return response()->json($request->user()->company);
     }
 
     public function update(Request $request)
@@ -46,7 +28,7 @@ class CompanyController extends Controller
 
         return response()->json([
             'message' => 'Configurações salvas com sucesso.',
-            'company' => $this->companyResource($company->fresh()),
+            'company' => $company->fresh(),
         ]);
     }
 
@@ -57,12 +39,12 @@ class CompanyController extends Controller
         $company = $request->user()->company;
 
         if ($company->logo) {
-            $this->disk()->delete($company->logo);
+            Storage::disk('supabase')->delete($company->logo);
         }
 
         $path = $request->file('logo')->store('company-logos', 'supabase');
         $company->update(['logo' => $path]);
 
-        return response()->json(['logo_url' => $this->logoUrl($path)]);
+        return response()->json(['logo_url' => $company->fresh()->logo_url]);
     }
 }
