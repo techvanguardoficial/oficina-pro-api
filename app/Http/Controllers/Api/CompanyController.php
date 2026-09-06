@@ -22,6 +22,7 @@ class CompanyController extends Controller
             'fantasy_name' => 'sometimes|string|max:255|nullable',
             'email'        => 'sometimes|email|max:255|nullable',
             'phone'        => 'sometimes|string|max:30|nullable',
+            'address'      => 'sometimes|string|max:255|nullable',
         ]);
 
         $company->update($validated);

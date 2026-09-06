@@ -19,6 +19,7 @@ class Company extends Model
         'cnpj',
         'email',
         'phone',
+        'address',
         'status',
         'logo',
     ];
