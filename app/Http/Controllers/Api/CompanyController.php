@@ -23,6 +23,8 @@ class CompanyController extends Controller
             'email'        => 'sometimes|email|max:255|nullable',
             'phone'        => 'sometimes|string|max:30|nullable',
             'address'      => 'sometimes|string|max:255|nullable',
+            'cnpj'         => ['sometimes', 'nullable', 'string', 'max:14',
+                               \Illuminate\Validation\Rule::unique('companies', 'cnpj')->ignore($company->id)],
         ]);
 
         $company->update($validated);
