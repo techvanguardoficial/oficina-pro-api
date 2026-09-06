@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CarMileage;
 use App\Models\ClientAppUser;
 use App\Models\ClientVehiclePhoto;
+use App\Models\Company;
 use App\Models\OrderService;
 use App\Models\Vehicle;
 use App\Models\VehicleMaintenanceSchedule;
@@ -352,12 +353,30 @@ class PortalController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
 
+        $companyData = null;
+        if ($companyId) {
+            $company = Company::find((int) $companyId);
+            if ($company) {
+                $companyData = [
+                    'id'           => $company->id,
+                    'name'         => $company->name,
+                    'fantasy_name' => $company->fantasy_name,
+                    'address'      => $company->address ?? null,
+                    'phone'        => $company->phone ?? null,
+                    'email'        => $company->email ?? null,
+                    'cnpj'         => $company->cnpj ?? null,
+                    'logo_url'     => $company->logo_url,
+                ];
+            }
+        }
+
         return response()->json([
             'vehicle'      => $this->vehicleResource($vehicle),
             'history'      => collect($orders->items())->map(fn($o) => $this->orderResource($o)),
             'current_page' => $orders->currentPage(),
             'last_page'    => $orders->lastPage(),
             'total'        => $orders->total(),
+            'company'      => $companyData,
         ]);
     }
 
