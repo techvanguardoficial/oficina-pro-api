@@ -13,7 +13,7 @@ class CarMakerController extends Controller
      */
     public function index()
     {
-        $carMakers = CarMaker::all();
+        $carMakers = CarMaker::with('models')->orderBy('manufacturer')->get();
         return response()->json($carMakers);
     }
 

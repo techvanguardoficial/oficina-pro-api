@@ -135,6 +135,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('order-statuses', OrderStatusController::class);
         Route::apiResource('categories', CategoryController::class);
         Route::apiResource('suppliers', SupplierController::class);
+        Route::get('stocks/generate-sku', [StockController::class, 'generateSku']);
         Route::apiResource('stocks', StockController::class);
         Route::get('transactions', [TransactionController::class, 'summary']);
         Route::get('transactions/period', [TransactionController::class, 'period']);

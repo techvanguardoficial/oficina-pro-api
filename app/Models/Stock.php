@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Scopes\CompanyScope;
 
 class Stock extends Model
@@ -27,6 +28,7 @@ class Stock extends Model
         'sale_price',
         'category_id',
         'supplier_id',
+        'image_url',
     ];
 
     protected $casts = [
@@ -47,5 +49,10 @@ class Stock extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function carModels(): BelongsToMany
+    {
+        return $this->belongsToMany(CarModel::class, 'stock_car_model');
     }
 }
