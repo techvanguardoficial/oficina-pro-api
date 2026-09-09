@@ -7,6 +7,7 @@ use App\Http\Traits\AuthorizesCompany;
 use App\Http\Traits\ChecksPlanLimits;
 use App\Http\Traits\HasRoleAndPermissions;
 use App\Models\Client;
+use App\Models\ClientAppUser;
 use App\Models\Phone;
 use App\Models\Address;
 use Illuminate\Http\Request;
@@ -68,8 +69,8 @@ class ClientController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'lastname' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:clients',
-            'cpf_cnpj' => 'required|string|max:20|unique:clients',
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('clients')->where('company_id', auth()->user()->company_id)],
+            'cpf_cnpj' => ['required', 'string', 'max:20', Rule::unique('clients')->where('company_id', auth()->user()->company_id)],
             'status' => 'boolean',
             'phone_one' => 'nullable|string|max:20',
             'phone_two' => 'nullable|string|max:20',
@@ -118,11 +119,34 @@ class ClientController extends Controller
             ]);
         }
 
+        $this->linkPortalUser($client, $validated);
+
         return response()->json([
             'message' => 'Cliente cadastrado com sucesso',
             'client_id' => $client->id,
             'client' => $client->load(['phone', 'address']),
         ], 201);
+    }
+
+    private function linkPortalUser(Client $client, array $data): void
+    {
+        $cpf   = $client->cpf_cnpj ?? null;
+        $email = $client->email ?? null;
+        $phone = $data['phone_one'] ?? null;
+
+        if (!$cpf && !$email && !$phone) {
+            return;
+        }
+
+        $appUser = ClientAppUser::where(function ($q) use ($cpf, $email, $phone) {
+            if ($cpf)   $q->orWhere('cpf', $cpf);
+            if ($email) $q->orWhere('email', $email);
+            if ($phone) $q->orWhere('phone', $phone);
+        })->first();
+
+        if ($appUser) {
+            $appUser->clients()->syncWithoutDetaching([$client->id]);
+        }
     }
 
     private function hasPhoneData(array $data): bool
@@ -158,8 +182,8 @@ class ClientController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'lastname' => 'sometimes|string|max:255',
-            'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('clients')->ignore($client->id)],
-            'cpf_cnpj' => ['sometimes', 'string', 'max:20', Rule::unique('clients')->ignore($client->id)],
+            'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
+            'cpf_cnpj' => ['sometimes', 'string', 'max:20', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
             'status' => 'sometimes|boolean',
         ]);
 

@@ -212,13 +212,24 @@ class AuthController extends Controller
      */
     private function linkMatchingClients(ClientAppUser $appUser): void
     {
+        $hasCondition = $appUser->cpf || $appUser->email || $appUser->phone;
+
+        if (!$hasCondition) {
+            return;
+        }
+
         $matchIds = Client::withoutGlobalScopes()
             ->where(function ($q) use ($appUser) {
                 if ($appUser->cpf) {
-                    $q->where('cpf_cnpj', $appUser->cpf);
+                    $q->orWhere('cpf_cnpj', $appUser->cpf);
+                }
+                if ($appUser->email) {
+                    $q->orWhere('email', $appUser->email);
+                }
+                if ($appUser->phone) {
+                    $q->orWhereHas('phone', fn($p) => $p->where('phone_one', $appUser->phone));
                 }
             })
-            ->orWhereHas('phone', fn($q) => $q->where('phone_one', $appUser->phone))
             ->pluck('id')
             ->toArray();
 

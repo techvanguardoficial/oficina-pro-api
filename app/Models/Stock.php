@@ -21,6 +21,7 @@ class Stock extends Model
         'company_id',
         'code',
         'name',
+        'description',
         'unit_of_measurement',
         'current_stock',
         'minimum_stock',
@@ -53,6 +54,7 @@ class Stock extends Model
 
     public function carModels(): BelongsToMany
     {
-        return $this->belongsToMany(CarModel::class, 'stock_car_model');
+        return $this->belongsToMany(CarModel::class, 'stock_car_model')
+            ->withPivot('year_from', 'year_to');
     }
 }

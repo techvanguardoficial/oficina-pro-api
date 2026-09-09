@@ -22,8 +22,8 @@ class AuthController extends Controller
             'company_email' => 'required|string|email|max:255|unique:companies,email',
             'company_phone' => 'required|string|max:20',
             'user_name' => 'required|string|max:255',
-            'user_email' => 'required|string|email|max:255|unique:users,email',
-            'user_phone' => 'required|string|max:20|unique:users,phone',
+            'user_email' => 'required|string|email|max:255',
+            'user_phone' => 'required|string|max:20',
             'user_password' => 'required|string|confirmed|min:8',
         ]);
 
@@ -143,7 +143,7 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'name'  => 'sometimes|string|max:255',
-            'email' => ['sometimes', 'string', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users')->ignore($user->id)],
+            'email' => ['sometimes', 'string', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users')->where('company_id', $user->company_id)->ignore($user->id)],
         ]);
 
         $user->update($validated);

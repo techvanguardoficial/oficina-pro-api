@@ -18,7 +18,7 @@ class VehicleController extends Controller
             ->whereIn('clients_id', $clientIds)
             ->with(['carModel.carMaker'])
             ->get()
-            ->groupBy('placa')
+            ->groupBy(fn($v) => strtoupper(preg_replace('/\s+/', '', $v->placa)))
             ->map(function ($group) {
                 $first = $group->first();
                 return [

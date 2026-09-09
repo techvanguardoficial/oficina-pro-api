@@ -24,18 +24,21 @@ class StockController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code'               => 'required|string|max:255|unique:stocks',
-            'name'               => 'required|string|max:255',
-            'unit_of_measurement'=> 'required|string|max:50',
-            'current_stock'      => 'required|integer|min:0',
-            'minimum_stock'      => 'required|integer|min:0',
-            'purchase_price'     => 'required|numeric|min:0',
-            'sale_price'         => 'required|numeric|min:0',
-            'category_id'        => 'nullable|exists:categories,id',
-            'supplier_id'        => 'nullable|exists:suppliers,id',
-            'car_model_ids'      => 'nullable|array',
-            'car_model_ids.*'    => 'integer|exists:car_models,id',
-            'image'              => 'nullable|image|max:5120',
+            'code'                      => 'required|string|max:255|unique:stocks',
+            'name'                      => 'required|string|max:255',
+            'description'               => 'nullable|string',
+            'unit_of_measurement'       => 'required|string|max:50',
+            'current_stock'             => 'required|integer|min:0',
+            'minimum_stock'             => 'required|integer|min:0',
+            'purchase_price'            => 'required|numeric|min:0',
+            'sale_price'                => 'required|numeric|min:0',
+            'category_id'               => 'nullable|exists:categories,id',
+            'supplier_id'               => 'nullable|exists:suppliers,id',
+            'car_models'                => 'nullable|array',
+            'car_models.*.id'           => 'required|integer|exists:car_models,id',
+            'car_models.*.year_from'    => 'nullable|integer|min:1900|max:2100',
+            'car_models.*.year_to'      => 'nullable|integer|min:1900|max:2100|gte:car_models.*.year_from',
+            'image'                     => 'nullable|image|max:5120',
         ]);
 
         $validated['company_id'] = auth()->user()->company_id;
@@ -44,13 +47,11 @@ class StockController extends Controller
             $validated['image_url'] = $this->uploadImage($request->file('image'));
         }
 
-        $carModelIds = $validated['car_model_ids'] ?? [];
-        unset($validated['car_model_ids']);
+        $carModels = $validated['car_models'] ?? [];
+        unset($validated['car_models']);
 
         $stock = Stock::create($validated);
-        if ($carModelIds) {
-            $stock->carModels()->sync($carModelIds);
-        }
+        $this->syncCarModels($stock, $carModels);
 
         $stock->load(['company', 'category', 'supplier', 'carModels.maker']);
         return response()->json($stock, 201);
@@ -67,18 +68,21 @@ class StockController extends Controller
         $this->authorizeCompany($stock);
 
         $validated = $request->validate([
-            'code'               => 'sometimes|string|max:255|unique:stocks,code,' . $stock->id,
-            'name'               => 'sometimes|string|max:255',
-            'unit_of_measurement'=> 'sometimes|string|max:50',
-            'current_stock'      => 'sometimes|integer|min:0',
-            'minimum_stock'      => 'sometimes|integer|min:0',
-            'purchase_price'     => 'sometimes|numeric|min:0',
-            'sale_price'         => 'sometimes|numeric|min:0',
-            'category_id'        => 'sometimes|nullable|exists:categories,id',
-            'supplier_id'        => 'sometimes|nullable|exists:suppliers,id',
-            'car_model_ids'      => 'sometimes|nullable|array',
-            'car_model_ids.*'    => 'integer|exists:car_models,id',
-            'image'              => 'sometimes|nullable|image|max:5120',
+            'code'                      => 'sometimes|string|max:255|unique:stocks,code,' . $stock->id,
+            'name'                      => 'sometimes|string|max:255',
+            'description'               => 'sometimes|nullable|string',
+            'unit_of_measurement'       => 'sometimes|string|max:50',
+            'current_stock'             => 'sometimes|integer|min:0',
+            'minimum_stock'             => 'sometimes|integer|min:0',
+            'purchase_price'            => 'sometimes|numeric|min:0',
+            'sale_price'                => 'sometimes|numeric|min:0',
+            'category_id'               => 'sometimes|nullable|exists:categories,id',
+            'supplier_id'               => 'sometimes|nullable|exists:suppliers,id',
+            'car_models'                => 'sometimes|nullable|array',
+            'car_models.*.id'           => 'required|integer|exists:car_models,id',
+            'car_models.*.year_from'    => 'nullable|integer|min:1900|max:2100',
+            'car_models.*.year_to'      => 'nullable|integer|min:1900|max:2100',
+            'image'                     => 'sometimes|nullable|image|max:5120',
         ]);
 
         if ($request->hasFile('image')) {
@@ -86,9 +90,9 @@ class StockController extends Controller
             $validated['image_url'] = $this->uploadImage($request->file('image'));
         }
 
-        if (array_key_exists('car_model_ids', $validated)) {
-            $stock->carModels()->sync($validated['car_model_ids'] ?? []);
-            unset($validated['car_model_ids']);
+        if (array_key_exists('car_models', $validated)) {
+            $this->syncCarModels($stock, $validated['car_models'] ?? []);
+            unset($validated['car_models']);
         }
 
         $stock->update($validated);
@@ -113,6 +117,18 @@ class StockController extends Controller
         return response()->json(['sku' => $sku]);
     }
 
+    private function syncCarModels(Stock $stock, array $carModels): void
+    {
+        $syncData = [];
+        foreach ($carModels as $entry) {
+            $syncData[$entry['id']] = [
+                'year_from' => $entry['year_from'] ?? null,
+                'year_to'   => $entry['year_to'] ?? null,
+            ];
+        }
+        $stock->carModels()->sync($syncData);
+    }
+
     private function uploadImage(\Illuminate\Http\UploadedFile $file): string
     {
         $path = $file->store('stocks', 'supabase');
@@ -122,12 +138,10 @@ class StockController extends Controller
     private function deleteImage(?string $imageUrl): void
     {
         if (!$imageUrl) return;
-        $disk = Storage::disk('supabase');
-        // Extract relative path from public URL
         $baseUrl = rtrim(config('filesystems.disks.supabase.url', ''), '/');
         if ($baseUrl && str_starts_with($imageUrl, $baseUrl)) {
             $relative = ltrim(substr($imageUrl, strlen($baseUrl)), '/');
-            $disk->delete($relative);
+            Storage::disk('supabase')->delete($relative);
         }
     }
 }

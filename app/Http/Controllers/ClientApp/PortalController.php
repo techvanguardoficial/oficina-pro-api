@@ -112,7 +112,12 @@ class PortalController extends Controller
             ->whereIn('clients_id', $clientIds)
             ->with(['carModel.maker'])
             ->get()
-            ->map(fn($v) => $this->vehicleResource($v, $photos->get($v->placa)));
+            ->groupBy(fn($v) => strtoupper(preg_replace('/\s+/', '', $v->placa)))
+            ->map(fn($group) => $this->vehicleResource(
+                $group->first(),
+                $photos->get($group->first()->placa)
+            ))
+            ->values();
 
         return response()->json($vehicles);
     }
@@ -291,17 +296,23 @@ class PortalController extends Controller
         $user      = $this->appUser();
         $clientIds = $user->clientIds();
 
-        $vehicle = Vehicle::withoutGlobalScopes()
+        $vehicleIds = Vehicle::withoutGlobalScopes()
             ->whereIn('clients_id', $clientIds)
-            ->where('placa', strtoupper($placa))
-            ->firstOrFail();
+            ->whereRaw('UPPER(REPLACE(placa, " ", "")) = ?', [strtoupper(preg_replace('/\s+/', '', $placa))])
+            ->pluck('id');
+
+        if ($vehicleIds->isEmpty()) {
+            abort(404, 'Veículo não encontrado.');
+        }
+
+        $vehicle = Vehicle::withoutGlobalScopes()->find($vehicleIds->first());
 
         $photo = ClientVehiclePhoto::where('client_app_user_id', $user->id)
             ->where('placa', strtoupper($placa))
             ->first();
 
         $workshops = OrderService::withoutGlobalScopes()
-            ->where('vehicle_id', $vehicle->id)
+            ->whereIn('vehicle_id', $vehicleIds)
             ->with('company:id,fantasy_name,name')
             ->select('company_id')
             ->selectRaw('COUNT(*) as total_os')
@@ -326,16 +337,21 @@ class PortalController extends Controller
     {
         $clientIds = $this->appUser()->clientIds();
 
-        $vehicle = Vehicle::withoutGlobalScopes()
+        $vehicleIds = Vehicle::withoutGlobalScopes()
             ->whereIn('clients_id', $clientIds)
-            ->where('placa', strtoupper($placa))
-            ->firstOrFail();
+            ->whereRaw('UPPER(REPLACE(placa, " ", "")) = ?', [strtoupper(preg_replace('/\s+/', '', $placa))])
+            ->pluck('id');
 
+        if ($vehicleIds->isEmpty()) {
+            abort(404, 'Veículo não encontrado.');
+        }
+
+        $vehicle   = Vehicle::withoutGlobalScopes()->with(['carModel.maker'])->find($vehicleIds->first());
         $perPage   = (int) $request->query('per_page', 15);
         $companyId = $request->query('company_id');
 
         $query = OrderService::withoutGlobalScopes()
-            ->where('vehicle_id', $vehicle->id);
+            ->whereIn('vehicle_id', $vehicleIds);
 
         if ($companyId) {
             $query->where('company_id', (int) $companyId);
