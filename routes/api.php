@@ -37,9 +37,11 @@ Route::prefix('v1')->group(function () {
     Route::prefix('client')->group(function () {
 
         // Públicas
-        Route::post('auth/verify-token',    [ClientAuthController::class, 'verifyMagicToken']);
-        Route::post('auth/complete-signup', [ClientAuthController::class, 'completeSignup']);
-        Route::post('auth/login',           [ClientAuthController::class, 'login']);
+        Route::post('auth/verify-token',          [ClientAuthController::class, 'verifyMagicToken']);
+        Route::post('auth/complete-signup',        [ClientAuthController::class, 'completeSignup']);
+        Route::post('auth/verify-code',            [ClientAuthController::class, 'verifyPortalCode']);
+        Route::post('auth/complete-signup-by-code',[ClientAuthController::class, 'completeSignupByCode']);
+        Route::post('auth/login',                  [ClientAuthController::class, 'login']);
 
         // Protegidas — requer token Sanctum de ClientAppUser (guard client)
         Route::middleware('auth:client')->group(function () {
@@ -146,6 +148,8 @@ Route::prefix('v1')->group(function () {
 
         // Gera link mágico para o cliente (chamado pela oficina)
         Route::post('client-portal/magic-link', [ClientAuthController::class, 'generateMagicLink']);
+        // Gera código alfanumérico de acesso para o cliente (chamado pela oficina)
+        Route::post('client-portal/portal-code', [ClientAuthController::class, 'generatePortalCode']);
     });
 
 });

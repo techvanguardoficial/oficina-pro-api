@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\ClientAppUser;
 use App\Models\ClientMagicToken;
+use App\Models\ClientPortalCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -205,6 +206,146 @@ class AuthController extends Controller
     {
         $request->user('client')?->currentAccessToken()->delete();
         return response()->json(['message' => 'Logout realizado.']);
+    }
+
+    /**
+     * Gerado pela oficina: cria um código de 6 dígitos alfanumérico para o cliente.
+     * Rota protegida pelo guard da oficina (auth:user).
+     */
+    public function generatePortalCode(Request $request)
+    {
+        $request->validate(['client_id' => 'required|exists:clients,id']);
+
+        $client    = Client::findOrFail($request->client_id);
+        $companyId = auth('user')->user()->company_id;
+
+        // Invalida códigos anteriores não usados deste cliente nesta empresa
+        ClientPortalCode::where('client_id', $client->id)
+            ->where('company_id', $companyId)
+            ->whereNull('used_at')
+            ->delete();
+
+        // Gera código único de 6 dígitos alfanumérico (ex: A3K9P2)
+        do {
+            $code = strtoupper(Str::random(6));
+        } while (ClientPortalCode::where('code', $code)->exists());
+
+        $portalCode = ClientPortalCode::create([
+            'client_id'  => $client->id,
+            'company_id' => $companyId,
+            'code'       => $code,
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        return response()->json([
+            'code'       => $portalCode->code,
+            'expires_at' => $portalCode->expires_at,
+            'client'     => [
+                'id'   => $client->id,
+                'name' => $client->name . ' ' . ($client->lastname ?? ''),
+            ],
+        ]);
+    }
+
+    /**
+     * Portal: valida o código e retorna os dados pré-preenchidos do cliente.
+     * Rota pública.
+     */
+    public function verifyPortalCode(Request $request)
+    {
+        $request->validate(['code' => 'required|string|max:8']);
+
+        $portalCode = ClientPortalCode::where('code', strtoupper(trim($request->code)))
+            ->with(['client.phone', 'client.address'])
+            ->first();
+
+        if (!$portalCode || !$portalCode->isValid()) {
+            return response()->json([
+                'message' => 'Código inválido ou expirado.',
+                'code'    => 'INVALID_CODE',
+            ], 422);
+        }
+
+        $client = $portalCode->client;
+
+        $existingUser = ClientAppUser::where('phone', $client->phone?->phone_one)
+            ->orWhere(function ($q) use ($client) {
+                if ($client->email) $q->where('email', $client->email);
+            })
+            ->first();
+
+        return response()->json([
+            'code_valid'          => true,
+            'already_has_account' => (bool) $existingUser,
+            'prefill' => [
+                'name'  => trim($client->name . ' ' . ($client->lastname ?? '')),
+                'email' => $client->email ?? '',
+                'phone' => $client->phone?->phone_one ?? '',
+                'cpf'   => $client->cpf_cnpj ?? '',
+            ],
+        ]);
+    }
+
+    /**
+     * Portal: completa signup via código (análogo ao completeSignup via token).
+     * Rota pública.
+     */
+    public function completeSignupByCode(Request $request)
+    {
+        $request->validate([
+            'code'     => 'required|string|max:8',
+            'name'     => 'required|string|max:100',
+            'email'    => 'required|email|max:150',
+            'phone'    => 'required|string|max:20',
+            'password' => 'required|string|min:6|confirmed',
+            'cpf'      => 'nullable|string|max:14',
+        ]);
+
+        $portalCode = ClientPortalCode::where('code', strtoupper(trim($request->code)))
+            ->whereNull('used_at')
+            ->where('expires_at', '>', now())
+            ->firstOrFail();
+
+        if (ClientAppUser::where('email', $request->email)->exists()) {
+            return response()->json([
+                'message' => 'Este e-mail já está em uso.',
+                'code'    => 'EMAIL_TAKEN',
+            ], 422);
+        }
+
+        $appUser = ClientAppUser::firstOrCreate(
+            ['phone' => $request->phone],
+            [
+                'name'                 => $request->name,
+                'email'                => $request->email,
+                'password'             => Hash::make($request->password),
+                'cpf'                  => $request->cpf,
+                'onboarding_completed' => true,
+                'last_login_at'        => now(),
+            ]
+        );
+
+        if (!$appUser->wasRecentlyCreated) {
+            $appUser->update([
+                'name'                 => $request->name,
+                'email'                => $request->email,
+                'password'             => Hash::make($request->password),
+                'onboarding_completed' => true,
+                'last_login_at'        => now(),
+            ]);
+        }
+
+        $appUser->clients()->syncWithoutDetaching([$portalCode->client_id]);
+        $portalCode->update(['used_at' => now()]);
+        $this->linkMatchingClients($appUser);
+
+        $accessToken = $appUser->createToken('client-portal', ['client'])->plainTextToken;
+
+        return response()->json([
+            'message'      => 'Conta criada com sucesso!',
+            'access_token' => $accessToken,
+            'user'         => $this->userResource($appUser),
+        ], 201);
     }
 
     /**
