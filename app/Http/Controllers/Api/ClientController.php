@@ -180,20 +180,45 @@ class ClientController extends Controller
         $this->authorizeCompany($client);
 
         $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'lastname' => 'sometimes|string|max:255',
-            'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
-            'cpf_cnpj' => ['sometimes', 'string', 'max:20', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
-            'status' => 'sometimes|boolean',
+            'name'      => 'sometimes|string|max:255',
+            'lastname'  => 'sometimes|string|max:255',
+            'email'     => ['sometimes', 'string', 'email', 'max:255', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
+            'cpf_cnpj'  => ['sometimes', 'string', 'max:20', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
+            'status'    => 'sometimes|boolean',
+            // phone
+            'phone_one'   => 'nullable|string|max:20',
+            'phone_two'   => 'nullable|string|max:20',
+            'phone_three' => 'nullable|string|max:20',
+            // address
+            'address'    => 'nullable|string|max:255',
+            'number'     => 'nullable|string|max:20',
+            'complement' => 'nullable|string|max:255',
+            'zipcode'    => 'nullable|string|max:20',
+            'district'   => 'nullable|string|max:100',
+            'city'       => 'nullable|string|max:100',
+            'uf'         => 'nullable|string|max:2',
         ]);
 
         if (isset($validated['status'])) {
             $validated['status'] = $validated['status'] ? '1' : '0';
         }
 
-        $client->update($validated);
+        $clientFields = array_intersect_key($validated, array_flip(['name', 'lastname', 'email', 'cpf_cnpj', 'status']));
+        $client->update($clientFields);
 
-        return response()->json($client);
+        // Update or create phone record
+        $phoneFields = array_intersect_key($validated, array_flip(['phone_one', 'phone_two', 'phone_three']));
+        if (!empty($phoneFields)) {
+            $client->phone()->updateOrCreate(['clients_id' => $client->id], $phoneFields);
+        }
+
+        // Update or create address record
+        $addressFields = array_intersect_key($validated, array_flip(['address', 'number', 'complement', 'zipcode', 'district', 'city', 'uf']));
+        if (!empty($addressFields)) {
+            $client->address()->updateOrCreate(['clients_id' => $client->id], $addressFields);
+        }
+
+        return response()->json($client->fresh()->load(['phone', 'address']));
     }
 
     /**
