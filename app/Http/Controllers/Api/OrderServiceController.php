@@ -10,6 +10,7 @@ use App\Models\OrderService;
 use App\Models\Part;
 use App\Models\Service;
 use App\Models\CarMileage;
+use App\Models\Stock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -72,9 +73,10 @@ class OrderServiceController extends Controller
             'mileage' => 'nullable|numeric|min:0',
             'parts' => 'nullable|array',
             'parts.*.description' => 'required_with:parts|string|max:255',
-            'parts.*.quantity' => 'required_with:parts|numeric|min:0',
+            'parts.*.quantity' => 'required_with:parts|numeric|min:1',
             'parts.*.unit_price' => 'required_with:parts|numeric|min:0',
             'parts.*.information' => 'nullable|string|max:500',
+            'parts.*.stock_id' => 'nullable|integer|exists:stocks,id',
             'services' => 'nullable|array',
             'services.*.description' => 'required_with:services|string|max:255',
             'services.*.price' => 'required_with:services|numeric|min:0',
@@ -108,7 +110,15 @@ class OrderServiceController extends Controller
                     'quantity' => $part['quantity'],
                     'unit_price' => $part['unit_price'],
                     'information' => $part['information'] ?? null,
+                    'stock_id' => $part['stock_id'] ?? null,
                 ]);
+
+                // Dar baixa no estoque se for item vinculado
+                if (!empty($part['stock_id'])) {
+                    Stock::where('id', $part['stock_id'])
+                        ->where('company_id', $companyId)
+                        ->decrement('current_stock', $part['quantity']);
+                }
             }
 
             foreach ($validated['services'] ?? [] as $service) {
@@ -159,9 +169,10 @@ class OrderServiceController extends Controller
             'mileage'                  => 'nullable|numeric|min:0',
             'parts'                    => 'nullable|array',
             'parts.*.description'      => 'required_with:parts|string|max:255',
-            'parts.*.quantity'         => 'required_with:parts|numeric|min:0',
+            'parts.*.quantity'         => 'required_with:parts|numeric|min:1',
             'parts.*.unit_price'       => 'required_with:parts|numeric|min:0',
             'parts.*.information'      => 'nullable|string|max:500',
+            'parts.*.stock_id'         => 'nullable|integer|exists:stocks,id',
             'services'                 => 'nullable|array',
             'services.*.description'   => 'required_with:services|string|max:255',
             'services.*.price'         => 'required_with:services|numeric|min:0',
@@ -177,9 +188,18 @@ class OrderServiceController extends Controller
                 'info'             => $validated['info']              ?? $orderService->info,
             ]);
 
-            // Substitui peças: remove as antigas e recria
+            // Substitui peças: devolve estoque das antigas, dá baixa nas novas
             if (array_key_exists('parts', $validated)) {
+                // Devolve estoque das peças que serão removidas
+                $oldParts = $orderService->parts()->whereNotNull('stock_id')->get();
+                foreach ($oldParts as $oldPart) {
+                    Stock::where('id', $oldPart->stock_id)
+                        ->where('company_id', $companyId)
+                        ->increment('current_stock', $oldPart->quantity);
+                }
+
                 $orderService->parts()->delete();
+
                 foreach ($validated['parts'] ?? [] as $part) {
                     Part::create([
                         'orders_id'   => $orderService->id,
@@ -188,7 +208,15 @@ class OrderServiceController extends Controller
                         'quantity'    => $part['quantity'],
                         'unit_price'  => $part['unit_price'],
                         'information' => $part['information'] ?? null,
+                        'stock_id'    => $part['stock_id'] ?? null,
                     ]);
+
+                    // Dar baixa no estoque se for item vinculado
+                    if (!empty($part['stock_id'])) {
+                        Stock::where('id', $part['stock_id'])
+                            ->where('company_id', $companyId)
+                            ->decrement('current_stock', $part['quantity']);
+                    }
                 }
             }
 
@@ -225,7 +253,19 @@ class OrderServiceController extends Controller
     public function destroy(OrderService $orderService)
     {
         $this->authorizeCompany($orderService);
-        $orderService->delete();
+
+        $companyId = auth()->user()->company_id;
+
+        DB::transaction(function () use ($orderService, $companyId) {
+            // Devolve estoque das peças vinculadas antes de excluir a OS
+            $orderService->parts()->whereNotNull('stock_id')->each(function ($part) use ($companyId) {
+                Stock::where('id', $part->stock_id)
+                    ->where('company_id', $companyId)
+                    ->increment('current_stock', $part->quantity);
+            });
+
+            $orderService->delete();
+        });
 
         return response()->json(null, 204);
     }

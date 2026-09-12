@@ -13,11 +13,23 @@ class StockController extends Controller
 {
     use AuthorizesCompany;
 
-    public function index()
+    public function index(Request $request)
     {
-        $stocks = Stock::with(['company', 'category', 'supplier', 'carModels.maker'])
-            ->where('company_id', auth()->user()->company_id)
-            ->paginate(15);
+        $query = Stock::with(['company', 'category', 'supplier', 'carModels.maker'])
+            ->where('company_id', auth()->user()->company_id);
+
+        if ($request->filled('search')) {
+            $term = $request->input('search');
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                  ->orWhere('code', 'like', "%{$term}%")
+                  ->orWhere('description', 'like', "%{$term}%");
+            });
+        }
+
+        $perPage = (int) $request->input('per_page', 15);
+        $stocks  = $query->paginate($perPage);
+
         return response()->json($stocks);
     }
 

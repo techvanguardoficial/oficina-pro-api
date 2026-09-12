@@ -19,6 +19,7 @@ class Part extends Model
         'quantity',
         'unit_price',
         'orders_id',
+        'stock_id',
     ];
 
     protected $casts = [
@@ -32,6 +33,11 @@ class Part extends Model
     public function orderService(): BelongsTo
     {
         return $this->belongsTo(OrderService::class, 'orders_id');
+    }
+
+    public function stock(): BelongsTo
+    {
+        return $this->belongsTo(Stock::class, 'stock_id');
     }
 
     // Mutators
