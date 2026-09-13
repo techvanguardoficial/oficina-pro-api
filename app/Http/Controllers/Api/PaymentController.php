@@ -242,6 +242,10 @@ class PaymentController extends Controller
 
             // Processar eventos
             switch ($event['type']) {
+                case 'checkout.session.completed':
+                    $this->handleCheckoutSessionCompleted($event);
+                    break;
+
                 case 'customer.subscription.created':
                     $this->handleSubscriptionCreated($event);
                     break;
@@ -272,6 +276,79 @@ class PaymentController extends Controller
             \Log::error('Webhook Error: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 400);
         }
+    }
+
+    /**
+     * Processar: checkout.session.completed
+     * Principal ponto de criação da subscription — não depende do redirect do usuário.
+     */
+    private function handleCheckoutSessionCompleted(array $event)
+    {
+        $session = $event['data']['object'];
+
+        if (($session['mode'] ?? '') !== 'subscription') {
+            return;
+        }
+
+        $companyId = $session['metadata']['company_id'] ?? null;
+        $planId    = $session['metadata']['plan_id'] ?? null;
+
+        if (!$companyId || !$planId || !$session['subscription']) {
+            \Log::warning('checkout.session.completed: metadados ausentes', [
+                'session_id' => $session['id'],
+                'metadata'   => $session['metadata'],
+            ]);
+            return;
+        }
+
+        $company = \App\Models\Company::find($companyId);
+        $plan    = \App\Models\Plan::find($planId);
+
+        if (!$company || !$plan) {
+            \Log::warning('checkout.session.completed: company ou plan não encontrado', [
+                'company_id' => $companyId,
+                'plan_id'    => $planId,
+            ]);
+            return;
+        }
+
+        $stripeSubscription = \Stripe\Subscription::retrieve($session['subscription']);
+
+        // Salvar stripe_customer_id na empresa
+        if (!$company->stripe_customer_id) {
+            $company->update(['stripe_customer_id' => $session['customer']]);
+        }
+
+        $subscription = \App\Models\Subscription::updateOrCreate(
+            ['company_id' => $company->id],
+            [
+                'plan_id'                 => $plan->id,
+                'stripe_customer_id'      => $session['customer'],
+                'stripe_subscription_id'  => $session['subscription'],
+                'stripe_price_id'         => $stripeSubscription->items->data[0]->price->id ?? null,
+                'status'                  => $stripeSubscription->status,
+                'current_period_start'    => $stripeSubscription->current_period_start
+                    ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_start)
+                    : null,
+                'current_period_end'      => $stripeSubscription->current_period_end
+                    ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end)
+                    : null,
+                'trial_starts_at'         => $stripeSubscription->trial_start
+                    ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_start)
+                    : null,
+                'trial_ends_at'           => $stripeSubscription->trial_end
+                    ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end)
+                    : null,
+            ]
+        );
+
+        \Log::info('checkout.session.completed: subscription salva', [
+            'subscription_id'        => $subscription->id,
+            'company_id'             => $company->id,
+            'plan_id'                => $plan->id,
+            'stripe_subscription_id' => $session['subscription'],
+            'status'                 => $stripeSubscription->status,
+        ]);
     }
 
     /**
