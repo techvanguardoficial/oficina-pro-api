@@ -312,7 +312,10 @@ class PaymentController extends Controller
             return;
         }
 
-        $stripeSubscription = \Stripe\Subscription::retrieve($session['subscription']);
+        $stripeSubscription = \Stripe\Subscription::retrieve([
+            'id'     => $session['subscription'],
+            'expand' => ['items.data.price'],
+        ]);
 
         // Salvar stripe_customer_id na empresa
         if (!$company->stripe_customer_id) {

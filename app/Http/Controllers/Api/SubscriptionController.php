@@ -56,13 +56,46 @@ class SubscriptionController extends Controller
             return response()->json(['message' => 'Nenhuma assinatura ativa'], 404);
         }
 
+        $discount = null;
+        $billingInterval = null;
+
+        if ($subscription->stripe_subscription_id) {
+            try {
+                $stripeSub = $this->stripe->subscriptions->retrieve(
+                    $subscription->stripe_subscription_id,
+                    ['expand' => ['discount.coupon', 'items.data.price']]
+                );
+
+                $billingInterval = $stripeSub->items->data[0]->price->recurring->interval ?? null;
+
+                if ($stripeSub->discount && $stripeSub->discount->coupon) {
+                    $coupon = $stripeSub->discount->coupon;
+                    $discount = [
+                        'coupon_name'   => $coupon->name ?? $coupon->id,
+                        'coupon_id'     => $coupon->id,
+                        'percent_off'   => $coupon->percent_off,
+                        'amount_off'    => $coupon->amount_off ? $coupon->amount_off / 100 : null,
+                        'currency'      => $coupon->currency,
+                        'end'           => $stripeSub->discount->end
+                            ? \Carbon\Carbon::createFromTimestamp($stripeSub->discount->end)->toISOString()
+                            : null,
+                        'valid_forever' => $coupon->duration === 'forever',
+                    ];
+                }
+            } catch (\Exception $e) {
+                \Log::warning('getCurrentSubscription: Stripe fetch failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         return response()->json([
-            'subscription' => $subscription,
-            'plan' => $subscription->plan,
-            'is_active' => $subscription->isActive(),
-            'is_on_trial' => $subscription->isOnTrial(),
-            'trial_ends_in' => $subscription->trialEndsIn(),
+            'subscription'     => $subscription,
+            'plan'             => $subscription->plan,
+            'is_active'        => $subscription->isActive(),
+            'is_on_trial'      => $subscription->isOnTrial(),
+            'trial_ends_in'    => $subscription->trialEndsIn(),
             'limit_violations' => $subscription->checkLimits(),
+            'discount'         => $discount,
+            'billing_interval' => $billingInterval,
         ]);
     }
 
@@ -148,7 +181,25 @@ class SubscriptionController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json($invoices);
+        // Enriquecer com URL da fatura no Stripe
+        $enriched = $invoices->map(function ($invoice) {
+            $data = $invoice->toArray();
+            $data['stripe_invoice_url'] = null;
+
+            if ($invoice->stripe_invoice_id) {
+                try {
+                    $stripeInvoice = $this->stripe->invoices->retrieve($invoice->stripe_invoice_id);
+                    $data['stripe_invoice_url'] = $stripeInvoice->hosted_invoice_url ?? null;
+                    $data['invoice_pdf'] = $stripeInvoice->invoice_pdf ?? null;
+                } catch (\Exception $e) {
+                    // ignore
+                }
+            }
+
+            return $data;
+        });
+
+        return response()->json($enriched);
     }
 
     /**
