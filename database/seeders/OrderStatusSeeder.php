@@ -2,37 +2,30 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\OrderStatus;
+use Illuminate\Support\Facades\DB;
 
 class OrderStatusSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        OrderStatus::create([
-            'status' => 'Concluído',
-        ]);
-        OrderStatus::create([
-            'status' => 'Em andamento',
-        ]);
-        OrderStatus::create([
-            'status' => 'Cancelado',
-        ]);
-        OrderStatus::create([
-            'status' => 'Aprovado',
-        ]);
-        OrderStatus::create([
-            'status' => 'Em Espera',
-        ]);
-        OrderStatus::create([
-            'status' => 'Aberto',
-        ]);
-        OrderStatus::create([
-            'status' => 'Aguardando Peça',
-        ]);
+        $statuses = [
+            'Concluído',
+            'Em andamento',
+            'Cancelado',
+            'Aprovado',
+            'Em Espera',
+            'Aberto',
+            'Aguardando Peça',
+            'Agendado',
+        ];
+
+        foreach ($statuses as $status) {
+            DB::table('orders_status')->insertOrIgnore([
+                'status'     => $status,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

@@ -35,7 +35,7 @@ class TransactionController extends Controller
             $periodEnd   = Carbon::parse($endDate);
         }
 
-        $completedStatus = OrderStatus::where('status', 'Concluído')->first();
+        $completedStatus = OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->first();
 
         $incomes         = Income::where('company_id', $companyId)
             ->whereBetween('date', [$periodStart, $periodEnd])
@@ -70,7 +70,7 @@ class TransactionController extends Controller
         $weekStart   = Carbon::now()->startOfWeek();
         $monthStart  = Carbon::now()->startOfMonth();
         $yearStart   = Carbon::now()->startOfYear();
-        $completedStatus = OrderStatus::where('status', 'Concluído')->first();
+        $completedStatus = OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->first();
 
         $incomes = [
             'today' => Income::where('company_id', $companyId)->whereDate('date', $today)->sum('value')
@@ -126,7 +126,7 @@ class TransactionController extends Controller
     private function getMonthlyData(int $companyId): array
     {
         $months          = [];
-        $completedStatus = OrderStatus::where('status', 'Concluído')->first();
+        $completedStatus = OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->first();
 
         for ($i = 11; $i >= 0; $i--) {
             // Parte do 1º do mês atual para evitar overflow em meses curtos

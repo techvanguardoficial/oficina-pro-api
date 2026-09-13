@@ -65,12 +65,12 @@ class OrderService extends Model
     // Accessors
     public function getTotalPartsAttribute(): float
     {
-        return $this->parts->sum('price') ?? 0;
+        return $this->parts->sum(fn($p) => ($p->unit_price ?? $p->price ?? 0) * max(1, (float)($p->quantity ?? 1)));
     }
 
     public function getTotalServicesAttribute(): float
     {
-        return $this->services->sum('price') ?? 0;
+        return $this->services->sum(fn($s) => $s->price ?? 0);
     }
 
     public function getTotalAttribute(): float
