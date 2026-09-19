@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Scopes\CompanyScope;
+use App\Notifications\ResetPasswordNotification;
 
 class User extends Authenticatable
 {
@@ -131,6 +132,11 @@ class User extends Authenticatable
             : $role;
 
         $this->roles()->detach($role);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 
     // Accessors
