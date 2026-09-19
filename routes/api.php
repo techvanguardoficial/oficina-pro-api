@@ -73,7 +73,8 @@ Route::prefix('v1')->group(function () {
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
     Route::get('reset-password/{token}', function (Request $request, $token) {
         $email = $request->query('email');
-        return redirect("http://localhost/?token={$token}&email={$email}");
+        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000')), '/');
+        return redirect("{$frontendUrl}/reset-password?token={$token}&email=" . urlencode($email));
     })->name('password.reset');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
