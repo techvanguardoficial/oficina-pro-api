@@ -12,6 +12,88 @@ use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
+    /**
+     * Listar todas as transações (receitas manuais + ordens concluídas + despesas) de um período
+     * para geração de extrato PDF no frontend.
+     */
+    public function list(Request $request)
+    {
+        $companyId = $request->user()->company_id;
+        $startDate = $request->query('start_date');
+        $endDate   = $request->query('end_date');
+
+        if (!$startDate || !$endDate) {
+            return response()->json(['error' => 'Informe start_date e end_date'], 400);
+        }
+
+        $start = Carbon::parse($startDate)->startOfDay();
+        $end   = Carbon::parse($endDate)->endOfDay();
+
+        // Receitas manuais
+        $incomesRaw = Income::where('company_id', $companyId)
+            ->whereBetween('date', [$start, $end])
+            ->with('type')
+            ->orderBy('date')
+            ->get();
+
+        $incomes = $incomesRaw->map(fn($i) => [
+            'id'          => 'income_' . $i->id,
+            'type'        => 'Receita',
+            'description' => $i->info ?? $i->description ?? 'Receita',
+            'amount'      => (float) ($i->value ?? $i->amount ?? 0),
+            'date'        => $i->date instanceof \Carbon\Carbon ? $i->date->toDateString() : $i->date,
+            'source'      => 'manual',
+        ]);
+
+        // Receitas de ordens concluídas (filtradas por updated_at)
+        $completedStatus = OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->first();
+        $orderIncomes = collect();
+
+        if ($completedStatus) {
+            $orders = OrderService::where('company_id', $companyId)
+                ->where('orders_status_id', $completedStatus->id)
+                ->whereBetween('updated_at', [$start, $end])
+                ->with(['parts', 'services', 'vehicle'])
+                ->orderBy('updated_at')
+                ->get();
+
+            $orderIncomes = $orders->map(function ($order) {
+                $placa = $order->vehicle->placa ?? $order->placa ?? '';
+                $total = $order->total ?? 0;
+                return [
+                    'id'          => 'order_' . $order->id,
+                    'type'        => 'Receita',
+                    'description' => "OS #{$order->id}" . ($placa ? " — {$placa}" : ''),
+                    'amount'      => (float) $total,
+                    'date'        => $order->updated_at ? $order->updated_at->toDateString() : now()->toDateString(),
+                    'source'      => 'order',
+                ];
+            });
+        }
+
+        // Despesas
+        $expensesRaw = Expense::where('company_id', $companyId)
+            ->whereBetween('date', [$start, $end])
+            ->with('type')
+            ->orderBy('date')
+            ->get();
+
+        $expenses = $expensesRaw->map(fn($e) => [
+            'id'          => 'expense_' . $e->id,
+            'type'        => 'Despesa',
+            'description' => $e->info ?? $e->description ?? 'Despesa',
+            'amount'      => (float) ($e->value ?? $e->amount ?? 0),
+            'date'        => $e->date instanceof \Carbon\Carbon ? $e->date->toDateString() : $e->date,
+            'source'      => 'manual',
+        ]);
+
+        $all = $incomes->concat($orderIncomes)->concat($expenses)
+            ->sortBy('date')
+            ->values();
+
+        return response()->json($all);
+    }
+
     public function period(Request $request)
     {
         $companyId = $request->user()->company_id;

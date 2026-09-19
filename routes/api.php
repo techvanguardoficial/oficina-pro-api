@@ -141,6 +141,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('stocks', StockController::class);
         Route::get('transactions', [TransactionController::class, 'summary']);
         Route::get('transactions/period', [TransactionController::class, 'period']);
+        Route::get('transactions/list', [TransactionController::class, 'list']);
 
         Route::get('dashboard/top-vehicle-models', [DashboardController::class, 'topVehicleModels']);
         Route::get('dashboard/top-clients', [DashboardController::class, 'topClients']);

@@ -273,7 +273,12 @@ class PaymentController extends Controller
 
             return response()->json(['status' => 'received']);
         } catch (\Exception $e) {
-            \Log::error('Webhook Error: ' . $e->getMessage());
+            \Log::error('Webhook Error', [
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+                'event'   => $event['type'] ?? 'unknown',
+            ]);
             return response()->json(['error' => $e->getMessage()], 400);
         }
     }
@@ -457,19 +462,33 @@ class PaymentController extends Controller
             $stripeSubscription['id']
         )->first();
 
-        if ($subscription) {
-            $subscription->update([
-                'status' => 'canceled',
-                'canceled_at' => now(),
-                'ended_at' => \Carbon\Carbon::createFromTimestamp(
-                    $stripeSubscription['ended_at']
-                ),
+        if (!$subscription) {
+            \Log::warning('Subscription Deleted: subscription not found', [
+                'stripe_subscription_id' => $stripeSubscription['id'],
             ]);
-
-            \Log::info('Subscription Deleted', [
-                'subscription_id' => $subscription->id,
-            ]);
+            return;
         }
+
+        $endedAt = $stripeSubscription['ended_at']
+            ? \Carbon\Carbon::createFromTimestamp($stripeSubscription['ended_at'])
+            : now();
+
+        $canceledAt = $stripeSubscription['canceled_at']
+            ? \Carbon\Carbon::createFromTimestamp($stripeSubscription['canceled_at'])
+            : now();
+
+        $subscription->update([
+            'status'      => 'canceled',
+            'canceled_at' => $canceledAt,
+            'ended_at'    => $endedAt,
+        ]);
+
+        \Log::info('Subscription Deleted: access revoked', [
+            'subscription_id'        => $subscription->id,
+            'company_id'             => $subscription->company_id,
+            'stripe_subscription_id' => $stripeSubscription['id'],
+            'ended_at'               => $endedAt,
+        ]);
     }
 
     /**
