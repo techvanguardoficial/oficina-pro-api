@@ -228,11 +228,14 @@ class PaymentController extends Controller
         $body = $request->getContent();
 
         try {
-            $event = \Stripe\Webhook::constructEvent(
+            $stripeEvent = \Stripe\Webhook::constructEvent(
                 $body,
                 $signature,
                 config('services.stripe.webhook_secret')
             );
+
+            // Converte para array simples para todos os handlers
+            $event = json_decode(json_encode($stripeEvent), true);
 
             // Log do evento
             \Log::info('Stripe Webhook Event', [
