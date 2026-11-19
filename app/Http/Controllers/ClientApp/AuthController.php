@@ -7,7 +7,9 @@ use App\Models\Client;
 use App\Models\ClientAppUser;
 use App\Models\ClientMagicToken;
 use App\Models\ClientPortalCode;
+use App\Models\Company;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -111,53 +113,7 @@ class AuthController extends Controller
             ->where('expires_at', '>', now())
             ->firstOrFail();
 
-        // Evita duplicidade por email
-        if (ClientAppUser::where('email', $request->email)->exists()) {
-            return response()->json([
-                'message' => 'Este e-mail já está em uso.',
-                'code'    => 'EMAIL_TAKEN',
-            ], 422);
-        }
-
-        $appUser = ClientAppUser::firstOrCreate(
-            ['phone' => $request->phone],
-            [
-                'name'                 => $request->name,
-                'email'                => $request->email,
-                'password'             => Hash::make($request->password),
-                'cpf'                  => $request->cpf,
-                'onboarding_completed' => true,
-                'last_login_at'        => now(),
-            ]
-        );
-
-        // Se já existia, atualiza dados e marca onboarding completo
-        if (!$appUser->wasRecentlyCreated) {
-            $appUser->update([
-                'name'                 => $request->name,
-                'email'                => $request->email,
-                'password'             => Hash::make($request->password),
-                'onboarding_completed' => true,
-                'last_login_at'        => now(),
-            ]);
-        }
-
-        // Vincula ao cliente da oficina que gerou o token (se ainda não vinculado)
-        $appUser->clients()->syncWithoutDetaching([$magicToken->client_id]);
-
-        // Marca token como usado
-        $magicToken->update(['used_at' => now()]);
-
-        // Tenta vincular outros clientes com mesmo CPF/telefone em outras oficinas
-        $this->linkMatchingClients($appUser);
-
-        $accessToken = $appUser->createToken('client-portal', ['client'])->plainTextToken;
-
-        return response()->json([
-            'message'      => 'Conta criada com sucesso!',
-            'access_token' => $accessToken,
-            'user'         => $this->userResource($appUser),
-        ], 201);
+        return $this->createAccount($request, $magicToken->client_id, $magicToken);
     }
 
     /**
@@ -187,9 +143,6 @@ class AuthController extends Controller
         }
 
         $appUser->update(['last_login_at' => now()]);
-
-        // Tenta vincular novos clientes que tenham surgido com mesmo CPF/telefone
-        $this->linkMatchingClients($appUser);
 
         $accessToken = $appUser->createToken('client-portal', ['client'])->plainTextToken;
 
@@ -306,38 +259,80 @@ class AuthController extends Controller
             ->where('expires_at', '>', now())
             ->firstOrFail();
 
-        if (ClientAppUser::where('email', $request->email)->exists()) {
+        return $this->createAccount($request, $portalCode->client_id, $portalCode);
+    }
+
+    /**
+     * Portal (usuário logado): adiciona a oficina que gerou o código à conta.
+     */
+    public function redeemCode(Request $request)
+    {
+        $request->validate(['code' => 'required|string|max:8']);
+
+        $portalCode = ClientPortalCode::where('code', strtoupper(trim($request->code)))->first();
+
+        if (!$portalCode || !$portalCode->isValid()) {
             return response()->json([
-                'message' => 'Este e-mail já está em uso.',
-                'code'    => 'EMAIL_TAKEN',
+                'message' => 'Código inválido ou expirado.',
+                'code'    => 'INVALID_CODE',
             ], 422);
         }
 
-        $appUser = ClientAppUser::firstOrCreate(
-            ['phone' => $request->phone],
-            [
+        $appUser = auth('client')->user();
+        $client  = Client::withoutGlobalScopes()->findOrFail($portalCode->client_id);
+
+        DB::transaction(function () use ($appUser, $client, $portalCode) {
+            $appUser->clients()->syncWithoutDetaching([$client->id]);
+            $this->linkClientsMatching($appUser, $client);
+            $portalCode->update(['used_at' => now()]);
+        });
+
+        $company = Company::find($client->company_id);
+
+        return response()->json([
+            'message'  => 'Oficina adicionada com sucesso!',
+            'workshop' => $company?->fantasy_name ?: $company?->name,
+        ]);
+    }
+
+    /**
+     * Cria a conta do portal a partir de um código/token emitido pela oficina.
+     * Nunca altera uma conta existente: quem já tem conta deve fazer login
+     * e usar "Adicionar oficina".
+     */
+    private function createAccount(Request $request, int $clientId, ClientMagicToken|ClientPortalCode $credential)
+    {
+        $exists = ClientAppUser::where('phone', $request->phone)
+            ->orWhere('email', $request->email)
+            ->when($request->filled('cpf'), fn($q) => $q->orWhere('cpf', $request->cpf))
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'message' => 'Você já tem uma conta. Faça login e use o código em "Adicionar oficina".',
+                'code'    => 'ACCOUNT_EXISTS',
+            ], 409);
+        }
+
+        $client = Client::withoutGlobalScopes()->findOrFail($clientId);
+
+        $appUser = DB::transaction(function () use ($request, $client, $credential) {
+            $appUser = ClientAppUser::create([
                 'name'                 => $request->name,
                 'email'                => $request->email,
+                'phone'                => $request->phone,
                 'password'             => Hash::make($request->password),
                 'cpf'                  => $request->cpf,
                 'onboarding_completed' => true,
                 'last_login_at'        => now(),
-            ]
-        );
-
-        if (!$appUser->wasRecentlyCreated) {
-            $appUser->update([
-                'name'                 => $request->name,
-                'email'                => $request->email,
-                'password'             => Hash::make($request->password),
-                'onboarding_completed' => true,
-                'last_login_at'        => now(),
             ]);
-        }
 
-        $appUser->clients()->syncWithoutDetaching([$portalCode->client_id]);
-        $portalCode->update(['used_at' => now()]);
-        $this->linkMatchingClients($appUser);
+            $appUser->clients()->attach($client->id);
+            $this->linkClientsMatching($appUser, $client);
+            $credential->update(['used_at' => now()]);
+
+            return $appUser;
+        });
 
         $accessToken = $appUser->createToken('client-portal', ['client'])->plainTextToken;
 
@@ -349,32 +344,31 @@ class AuthController extends Controller
     }
 
     /**
-     * Vincula automaticamente clientes de outras oficinas com mesmo CPF ou telefone.
+     * Vincula clientes de outras oficinas com o mesmo CPF, e-mail ou telefone
+     * do cliente cadastrado pela oficina — nunca com dados digitados no portal,
+     * que não são verificados.
      */
-    private function linkMatchingClients(ClientAppUser $appUser): void
+    private function linkClientsMatching(ClientAppUser $appUser, Client $source): void
     {
-        $hasCondition = $appUser->cpf || $appUser->email || $appUser->phone;
+        $cpf   = $source->cpf_cnpj;
+        $email = $source->email;
+        $phone = $source->phone()->value('phone_one');
 
-        if (!$hasCondition) {
+        if (!$cpf && !$email && !$phone) {
             return;
         }
 
         $matchIds = Client::withoutGlobalScopes()
-            ->where(function ($q) use ($appUser) {
-                if ($appUser->cpf) {
-                    $q->orWhere('cpf_cnpj', $appUser->cpf);
-                }
-                if ($appUser->email) {
-                    $q->orWhere('email', $appUser->email);
-                }
-                if ($appUser->phone) {
-                    $q->orWhereHas('phone', fn($p) => $p->where('phone_one', $appUser->phone));
-                }
+            ->where('id', '!=', $source->id)
+            ->where(function ($q) use ($cpf, $email, $phone) {
+                if ($cpf)   $q->orWhere('cpf_cnpj', $cpf);
+                if ($email) $q->orWhere('email', $email);
+                if ($phone) $q->orWhereHas('phone', fn($p) => $p->where('phone_one', $phone));
             })
             ->pluck('id')
-            ->toArray();
+            ->all();
 
-        if (!empty($matchIds)) {
+        if ($matchIds) {
             $appUser->clients()->syncWithoutDetaching($matchIds);
         }
     }

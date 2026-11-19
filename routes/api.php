@@ -37,15 +37,18 @@ Route::prefix('v1')->group(function () {
     Route::prefix('client')->group(function () {
 
         // Públicas
-        Route::post('auth/verify-token',          [ClientAuthController::class, 'verifyMagicToken']);
-        Route::post('auth/complete-signup',        [ClientAuthController::class, 'completeSignup']);
-        Route::post('auth/verify-code',            [ClientAuthController::class, 'verifyPortalCode']);
-        Route::post('auth/complete-signup-by-code',[ClientAuthController::class, 'completeSignupByCode']);
-        Route::post('auth/login',                  [ClientAuthController::class, 'login']);
+        Route::middleware('throttle:10,1')->group(function () {
+            Route::post('auth/verify-token',          [ClientAuthController::class, 'verifyMagicToken']);
+            Route::post('auth/complete-signup',        [ClientAuthController::class, 'completeSignup']);
+            Route::post('auth/verify-code',            [ClientAuthController::class, 'verifyPortalCode']);
+            Route::post('auth/complete-signup-by-code',[ClientAuthController::class, 'completeSignupByCode']);
+            Route::post('auth/login',                  [ClientAuthController::class, 'login']);
+        });
 
         // Protegidas — requer token Sanctum de ClientAppUser (guard client)
         Route::middleware('auth:client')->group(function () {
             Route::post('auth/logout', [ClientAuthController::class, 'logout']);
+            Route::post('auth/redeem-code', [ClientAuthController::class, 'redeemCode'])->middleware('throttle:10,1');
 
             Route::get('me',           [PortalController::class, 'me']);
             Route::put('me',           [PortalController::class, 'updateMe']);
