@@ -118,8 +118,9 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('users', UserController::class);
         Route::apiResource('clients', ClientController::class);
         Route::get('clients/{client}/vehicles', [ClientController::class, 'getVehicles']);
-        Route::apiResource('car-makers', CarMakerController::class);
-        Route::apiResource('car-models', CarModelController::class);
+        // Cadastros gerais compartilhados por todas as oficinas: somente leitura.
+        Route::apiResource('car-makers', CarMakerController::class)->only(['index', 'show']);
+        Route::apiResource('car-models', CarModelController::class)->only(['index', 'show']);
         Route::get('car-makers/{makerId}/models', [CarModelController::class, 'getByMaker']);
         Route::post('client-change', [VehicleController::class, 'clientChange']);
         Route::apiResource('vehicles', VehicleController::class);
@@ -127,11 +128,11 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('order-services', OrderServiceController::class);
         Route::apiResource('incomes', IncomeController::class);
         Route::apiResource('expenses', ExpenseController::class);
-        Route::apiResource('expense-types', ExpenseTypeController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::apiResource('income-types', IncomeTypeController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::apiResource('order-types', OrderTypeController::class);
-        Route::apiResource('order-statuses', OrderStatusController::class);
-        Route::apiResource('categories', CategoryController::class);
+        Route::apiResource('expense-types', ExpenseTypeController::class)->only(['index']);
+        Route::apiResource('income-types', IncomeTypeController::class)->only(['index']);
+        Route::apiResource('order-types', OrderTypeController::class)->only(['index', 'show']);
+        Route::apiResource('order-statuses', OrderStatusController::class)->only(['index', 'show']);
+        Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
         Route::apiResource('suppliers', SupplierController::class);
         Route::get('stocks/generate-sku', [StockController::class, 'generateSku']);
         Route::apiResource('stocks', StockController::class);

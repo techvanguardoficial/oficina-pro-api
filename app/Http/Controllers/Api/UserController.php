@@ -31,7 +31,7 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        //$this->authorizePermission('create_user');
+        $this->ensureAdmin($request);
 
         // Check plan limit for users
         $limitCheck = $this->checkPlanLimit('users');
@@ -82,6 +82,11 @@ class UserController extends Controller
 
         $this->authorizeCompany($user);
 
+        $actor = $request->user();
+        if (!$actor->isAdmin() && $actor->id !== $user->id) {
+            abort(403, 'Apenas administradores podem alterar outros usuários.');
+        }
+
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
@@ -93,8 +98,14 @@ class UserController extends Controller
             $validated['password'] = Hash::make($validated['password']);
         }
 
-        if (isset($validated['admin'])) {
+        if (array_key_exists('admin', $validated)) {
+            if (!$actor->isAdmin()) {
+                abort(403, 'Apenas administradores podem alterar o nível de acesso.');
+            }
             $validated['admin'] = $validated['admin'] ? '1' : '0';
+            if ($validated['admin'] === '0' && $user->isAdmin()) {
+                $this->ensureNotLastAdmin($user);
+            }
         }
 
         $user->update($validated);
@@ -105,13 +116,39 @@ class UserController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
-        //$this->authorizePermission('delete_user');
-
         $this->authorizeCompany($user);
+        $this->ensureAdmin($request);
+
+        if ($request->user()->id === $user->id) {
+            abort(422, 'Você não pode remover o seu próprio usuário.');
+        }
+        if ($user->isAdmin()) {
+            $this->ensureNotLastAdmin($user);
+        }
+
         $user->delete();
 
         return response()->json(null, 204);
+    }
+
+    private function ensureAdmin(Request $request): void
+    {
+        if (!$request->user()->isAdmin()) {
+            abort(403, 'Apenas administradores podem gerenciar usuários.');
+        }
+    }
+
+    private function ensureNotLastAdmin(User $user): void
+    {
+        $otherAdmins = User::where('company_id', $user->company_id)
+            ->where('admin', '1')
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        if (!$otherAdmins) {
+            abort(422, 'A oficina precisa ter pelo menos um administrador.');
+        }
     }
 }
