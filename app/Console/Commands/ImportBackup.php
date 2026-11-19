@@ -189,22 +189,24 @@ class ImportBackup extends Command
     // Order Services — vehicle_placa → vehicle_id
     // -------------------------------------------------------------------------
 
-    // Mapa de status do sistema antigo → novo
-    private array $statusMap = [1 => 2, 2 => 3, 3 => 4, 4 => 5, 5 => 6];
-    // Mapa de types do sistema antigo → novo (antigo: 1=ORÇAMENTO, 2=OS; novo: 2=ORÇAMENTO, 3=OS)
-    private array $typeMap   = [1 => 2, 2 => 3];
-
+    // Os IDs de orders_types e orders_status do sistema antigo são idênticos aos
+    // do sistema novo (1=ORÇAMENTO, 2=OS; 1=Concluído ... 6=Aberto), por isso
+    // são copiados sem conversão.
     private function importOrderServices(string $sql): void
     {
         $rows = $this->parseInserts($sql, 'order_services',
             ['id', 'info', 'created_at', 'updated_at', 'deleted_at', 'vehicle_placa', 'orders_types_id', 'orders_status_id']);
+
+        $validTypes    = DB::table('orders_types')->pluck('type', 'id')->all();
+        $validStatuses = DB::table('orders_status')->pluck('status', 'id')->all();
 
         $total = count($rows);
         $this->info("Importando ordens de serviço ({$total})...");
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $inserted = 0; $skipped = 0; $orphan = 0;
+        $inserted = 0; $skipped = 0; $orphan = 0; $invalid = 0;
+        $byType = []; $byStatus = [];
         $batch = [];
 
         foreach ($rows as $row) {
@@ -213,6 +215,12 @@ class ImportBackup extends Command
 
             if (!$vehicleId) {
                 $orphan++;
+                $bar->advance();
+                continue;
+            }
+
+            if (!isset($validTypes[$row['orders_types_id']], $validStatuses[$row['orders_status_id']])) {
+                $invalid++;
                 $bar->advance();
                 continue;
             }
@@ -229,13 +237,15 @@ class ImportBackup extends Command
                 'info'             => $row['info'],
                 'vehicle_id'       => $vehicleId,
                 'company_id'       => $this->companyId,
-                'orders_types_id'  => $this->typeMap[$row['orders_types_id']]   ?? $row['orders_types_id'],
-                'orders_status_id' => $this->statusMap[$row['orders_status_id']] ?? $row['orders_status_id'],
+                'orders_types_id'  => $row['orders_types_id'],
+                'orders_status_id' => $row['orders_status_id'],
                 'created_at'       => $row['created_at'],
                 'updated_at'       => $row['updated_at'],
                 'deleted_at'       => $row['deleted_at'] ?? null,
             ];
             $inserted++;
+            $byType[$validTypes[$row['orders_types_id']]] = ($byType[$validTypes[$row['orders_types_id']]] ?? 0) + 1;
+            $byStatus[$validStatuses[$row['orders_status_id']]] = ($byStatus[$validStatuses[$row['orders_status_id']]] ?? 0) + 1;
             $bar->advance();
 
             if (count($batch) >= 500) {
@@ -251,6 +261,11 @@ class ImportBackup extends Command
         $bar->finish();
         $this->newLine();
         $this->info("  ✓ OS: {$inserted} inseridas, {$skipped} já existiam, {$orphan} sem veículo correspondente.");
+        if ($invalid > 0) {
+            $this->warn("  ⚠ OS: {$invalid} ignoradas por tipo ou status inexistente no sistema novo.");
+        }
+        foreach ($byType as $label => $count)   $this->line("    tipo {$label}: {$count}");
+        foreach ($byStatus as $label => $count) $this->line("    status {$label}: {$count}");
     }
 
     // -------------------------------------------------------------------------
