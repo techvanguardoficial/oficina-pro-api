@@ -3,10 +3,21 @@
 namespace App\Notifications;
 
 use Illuminate\Auth\Notifications\ResetPassword as BaseResetPassword;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 
-class ResetPasswordNotification extends BaseResetPassword
+/**
+ * Enviado pela fila (QUEUE_CONNECTION): a requisição de "esqueci a senha"
+ * responde na hora e o e-mail sai pelo worker (php artisan queue:work).
+ */
+class ResetPasswordNotification extends BaseResetPassword implements ShouldQueue
 {
+    use Queueable;
+
+    public $tries = 3;
+    public $backoff = 30;
+
     public function toMail($notifiable): MailMessage
     {
         $url = $this->resetUrl($notifiable);

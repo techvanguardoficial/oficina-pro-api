@@ -53,4 +53,9 @@ return [
         'instance' => env('EVOLUTION_INSTANCE', 'oficina-pro-envio'),
     ],
 
+    // Dias de tolerância após falha de pagamento (assinatura past_due)
+    'subscription' => [
+        'grace_days' => (int) env('SUBSCRIPTION_GRACE_DAYS', 7),
+    ],
+
 ];

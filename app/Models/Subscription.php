@@ -55,7 +55,22 @@ class Subscription extends Model
 
     public function isActive(): bool
     {
-        return in_array($this->status, ['active', 'trialing']);
+        return in_array($this->status, ['active', 'trialing']) || $this->isInGracePeriod();
+    }
+
+    /**
+     * Pagamento falhou (past_due), mas ainda dentro da tolerância contada a
+     * partir do fim do período pago, enquanto o Stripe tenta cobrar de novo.
+     * Dias configuráveis em SUBSCRIPTION_GRACE_DAYS (padrão 7).
+     */
+    public function isInGracePeriod(): bool
+    {
+        if ($this->status !== 'past_due' || !$this->current_period_end) {
+            return false;
+        }
+
+        $days = (int) config('services.subscription.grace_days', 7);
+        return $this->current_period_end->copy()->addDays($days)->isFuture();
     }
 
     public function isOnTrial(): bool
