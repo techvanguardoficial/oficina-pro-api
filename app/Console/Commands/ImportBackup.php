@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\DB;
  */
 class ImportBackup extends Command
 {
-    protected $signature   = 'import:backup {company_id : ID da empresa destino} {--file= : Caminho do arquivo SQL (padrão: backup_servcar_31_08_2026.sql)}';
+    protected $signature   = 'import:backup {company_id : ID da empresa destino} {--file= : Caminho do arquivo SQL (padrão: backup_servcar_31_08_2026.sql)}'
+        . ' {--corrigir-tipos-status : Só regrava tipo/status das OS já importadas, conforme o dump}'
+        . ' {--simular : Com --corrigir-tipos-status, mostra o que mudaria sem gravar}';
     protected $description = 'Migra dados do backup do sistema antigo para o novo schema multi-tenant';
 
     private int    $companyId;
@@ -41,6 +43,10 @@ class ImportBackup extends Command
         $this->newLine();
 
         $sql = file_get_contents($this->sqlFile);
+
+        if ($this->option('corrigir-tipos-status')) {
+            return $this->fixOrderTypesAndStatuses($sql, (bool) $this->option('simular'));
+        }
 
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
         DB::statement('SET unique_checks=0');
@@ -266,6 +272,79 @@ class ImportBackup extends Command
         }
         foreach ($byType as $label => $count)   $this->line("    tipo {$label}: {$count}");
         foreach ($byStatus as $label => $count) $this->line("    status {$label}: {$count}");
+    }
+
+    // -------------------------------------------------------------------------
+    // Correção de OS importadas com o mapeamento antigo de tipo/status.
+    // Regrava orders_types_id/orders_status_id exatamente como estão no dump,
+    // apenas para OS desta empresa cujo id existe no dump.
+    // -------------------------------------------------------------------------
+
+    private function fixOrderTypesAndStatuses(string $sql, bool $simulate): int
+    {
+        $rows = $this->parseInserts($sql, 'order_services',
+            ['id', 'info', 'created_at', 'updated_at', 'deleted_at', 'vehicle_placa', 'orders_types_id', 'orders_status_id']);
+
+        $types    = DB::table('orders_types')->pluck('type', 'id')->all();
+        $statuses = DB::table('orders_status')->pluck('status', 'id')->all();
+        $label = fn(array $map, $id) => $id . ' ' . ($map[$id] ?? '(NÃO EXISTE)');
+
+        $current = DB::table('order_services')
+            ->where('company_id', $this->companyId)
+            ->whereIn('id', array_column($rows, 'id'))
+            ->get(['id', 'orders_types_id', 'orders_status_id'])
+            ->keyBy('id');
+
+        $groups = [];      // "tipo|status" destino => [ids]
+        $transitions = []; // descrição da mudança => quantidade
+        $unchanged = 0; $notFound = 0; $invalid = 0;
+
+        foreach ($rows as $row) {
+            $os = $current->get($row['id']);
+            if (!$os) { $notFound++; continue; }
+
+            $newType = (int) $row['orders_types_id'];
+            $newStatus = (int) $row['orders_status_id'];
+            if (!isset($types[$newType], $statuses[$newStatus])) { $invalid++; continue; }
+
+            if ((int) $os->orders_types_id === $newType && (int) $os->orders_status_id === $newStatus) {
+                $unchanged++;
+                continue;
+            }
+
+            $groups["{$newType}|{$newStatus}"][] = $row['id'];
+            $key = 'tipo ' . $label($types, $os->orders_types_id) . ' → ' . $label($types, $newType)
+                . ' | status ' . $label($statuses, $os->orders_status_id) . ' → ' . $label($statuses, $newStatus);
+            $transitions[$key] = ($transitions[$key] ?? 0) + 1;
+        }
+
+        $toChange = array_sum(array_map('count', $groups));
+        $this->info($simulate ? 'SIMULAÇÃO — nada será gravado.' : 'Corrigindo tipo/status das OS...');
+        $this->line("  OS no dump: " . count($rows));
+        $this->line("  Já corretas: {$unchanged}");
+        $this->line("  A corrigir: {$toChange}");
+        $this->line("  Não encontradas nesta empresa: {$notFound}");
+        if ($invalid) $this->warn("  Ignoradas (tipo/status do dump inexistente): {$invalid}");
+
+        arsort($transitions);
+        foreach ($transitions as $desc => $count) $this->line("    {$count} × {$desc}");
+
+        if ($simulate || $toChange === 0) return 0;
+
+        DB::transaction(function () use ($groups) {
+            foreach ($groups as $key => $ids) {
+                [$type, $status] = explode('|', $key);
+                foreach (array_chunk($ids, 1000) as $chunk) {
+                    DB::table('order_services')
+                        ->where('company_id', $this->companyId)
+                        ->whereIn('id', $chunk)
+                        ->update(['orders_types_id' => $type, 'orders_status_id' => $status]);
+                }
+            }
+        });
+
+        $this->info("  ✓ {$toChange} OS corrigidas.");
+        return 0;
     }
 
     // -------------------------------------------------------------------------
