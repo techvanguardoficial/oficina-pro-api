@@ -9,6 +9,8 @@ use App\Http\Traits\HasRoleAndPermissions;
 use App\Models\ClientVehiclePhoto;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class VehicleController extends Controller
 {
@@ -60,7 +62,7 @@ class VehicleController extends Controller
             'color' => 'nullable|string|max:255',
             'km' => 'nullable|numeric|min:0',
             'car_models_id' => 'required|exists:car_models,id',
-            'clients_id' => 'required|exists:clients,id',
+            'clients_id' => ['required', Rule::exists('clients', 'id')->where('company_id', $companyId)],
         ], [
             'placa.required'  => 'A placa é obrigatória.',
             'placa.max'       => 'A placa deve ter no máximo 7 caracteres.',
@@ -88,7 +90,12 @@ class VehicleController extends Controller
 
         $vehicleData = $vehicle->load(['client', 'carModel.maker', 'company', 'orderServices', 'mileages'])->toArray();
 
-        $clientPhoto = ClientVehiclePhoto::where('placa', strtoupper($vehicle->placa))->latest()->first();
+        $clientPhoto = ClientVehiclePhoto::where('placa', strtoupper($vehicle->placa))
+            ->whereIn('client_app_user_id', DB::table('client_app_user_clients')
+                ->where('client_id', $vehicle->clients_id)
+                ->select('client_app_user_id'))
+            ->latest()
+            ->first();
         $vehicleData['client_photo_url'] = $clientPhoto
             ? rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($clientPhoto->photo_path, '/')
             : null;
@@ -122,7 +129,7 @@ class VehicleController extends Controller
             'color' => 'nullable|string|max:255',
             'km' => 'nullable|numeric|min:0',
             'car_models_id' => 'sometimes|exists:car_models,id',
-            'clients_id' => 'nullable|exists:clients,id',
+            'clients_id' => ['nullable', Rule::exists('clients', 'id')->where('company_id', $vehicle->company_id)],
         ], [
             'placa.unique'   => 'Esta placa já está cadastrada nesta oficina.',
             'chassis.unique' => 'Este chassi já está cadastrado nesta oficina.',
@@ -143,7 +150,7 @@ class VehicleController extends Controller
                 'required', 'string',
                 \Illuminate\Validation\Rule::exists('vehicles', 'placa')->where('company_id', $companyId),
             ],
-            'clients_id' => 'required|integer|exists:clients,id',
+            'clients_id' => ['required', 'integer', Rule::exists('clients', 'id')->where('company_id', $companyId)],
         ]);
 
         $vehicle = Vehicle::where('placa', $validated['placa'])->where('company_id', $companyId)->firstOrFail();

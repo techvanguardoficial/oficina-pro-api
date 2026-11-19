@@ -237,7 +237,7 @@ class ClientController extends Controller
     public function getVehicles(Client $client)
     {
         //$this->authorizePermission('view_clients');
-        //$this->authorizeCompany($client);
+        $this->authorizeCompany($client);
 
         $vehicles = $client->vehicles()->with(['carModel.maker', 'company'])->get();
 

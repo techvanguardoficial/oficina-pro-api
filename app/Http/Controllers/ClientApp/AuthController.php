@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -22,10 +23,10 @@ class AuthController extends Controller
      */
     public function generateMagicLink(Request $request)
     {
-        $request->validate(['client_id' => 'required|exists:clients,id']);
-
-        $client    = Client::findOrFail($request->client_id);
         $companyId = auth('user')->user()->company_id;
+        $request->validate(['client_id' => ['required', Rule::exists('clients', 'id')->where('company_id', $companyId)]]);
+
+        $client = Client::findOrFail($request->client_id);
 
         // Invalida tokens anteriores não usados para este cliente
         ClientMagicToken::where('client_id', $client->id)
@@ -167,10 +168,10 @@ class AuthController extends Controller
      */
     public function generatePortalCode(Request $request)
     {
-        $request->validate(['client_id' => 'required|exists:clients,id']);
-
-        $client    = Client::findOrFail($request->client_id);
         $companyId = auth('user')->user()->company_id;
+        $request->validate(['client_id' => ['required', Rule::exists('clients', 'id')->where('company_id', $companyId)]]);
+
+        $client = Client::findOrFail($request->client_id);
 
         // Invalida códigos anteriores não usados deste cliente nesta empresa
         ClientPortalCode::where('client_id', $client->id)

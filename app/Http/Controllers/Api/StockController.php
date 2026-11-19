@@ -8,6 +8,7 @@ use App\Models\Stock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class StockController extends Controller
 {
@@ -45,7 +46,7 @@ class StockController extends Controller
             'purchase_price'            => 'required|numeric|min:0',
             'sale_price'                => 'required|numeric|min:0',
             'category_id'               => 'nullable|exists:categories,id',
-            'supplier_id'               => 'nullable|exists:suppliers,id',
+            'supplier_id'               => ['nullable', Rule::exists('suppliers', 'id')->where('company_id', auth()->user()->company_id)],
             'car_models'                => 'nullable|array',
             'car_models.*.id'           => 'required|integer|exists:car_models,id',
             'car_models.*.year_from'    => 'nullable|integer|min:1900|max:2100',
@@ -89,7 +90,7 @@ class StockController extends Controller
             'purchase_price'            => 'sometimes|numeric|min:0',
             'sale_price'                => 'sometimes|numeric|min:0',
             'category_id'               => 'sometimes|nullable|exists:categories,id',
-            'supplier_id'               => 'sometimes|nullable|exists:suppliers,id',
+            'supplier_id'               => ['sometimes', 'nullable', Rule::exists('suppliers', 'id')->where('company_id', auth()->user()->company_id)],
             'car_models'                => 'sometimes|nullable|array',
             'car_models.*.id'           => 'required|integer|exists:car_models,id',
             'car_models.*.year_from'    => 'nullable|integer|min:1900|max:2100',

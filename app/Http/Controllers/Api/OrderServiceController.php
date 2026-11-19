@@ -76,7 +76,10 @@ class OrderServiceController extends Controller
             'parts.*.quantity' => 'required_with:parts|numeric|min:1',
             'parts.*.unit_price' => 'required_with:parts|numeric|min:0',
             'parts.*.information' => 'nullable|string|max:500',
-            'parts.*.stock_id' => 'nullable|integer|exists:stocks,id',
+            'parts.*.stock_id' => [
+                'nullable', 'integer',
+                \Illuminate\Validation\Rule::exists('stocks', 'id')->where('company_id', $request->user()->company_id),
+            ],
             'services' => 'nullable|array',
             'services.*.description' => 'required_with:services|string|max:255',
             'services.*.price' => 'required_with:services|numeric|min:0',
@@ -172,7 +175,10 @@ class OrderServiceController extends Controller
             'parts.*.quantity'         => 'required_with:parts|numeric|min:1',
             'parts.*.unit_price'       => 'required_with:parts|numeric|min:0',
             'parts.*.information'      => 'nullable|string|max:500',
-            'parts.*.stock_id'         => 'nullable|integer|exists:stocks,id',
+            'parts.*.stock_id'         => [
+                'nullable', 'integer',
+                \Illuminate\Validation\Rule::exists('stocks', 'id')->where('company_id', $request->user()->company_id),
+            ],
             'services'                 => 'nullable|array',
             'services.*.description'   => 'required_with:services|string|max:255',
             'services.*.price'         => 'required_with:services|numeric|min:0',
