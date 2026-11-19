@@ -9,6 +9,7 @@ use App\Models\OrderService;
 use App\Models\OrderStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
@@ -117,13 +118,12 @@ class TransactionController extends Controller
             $periodEnd   = Carbon::parse($endDate);
         }
 
-        $completedStatus = OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->first();
-
         $incomes         = Income::where('company_id', $companyId)
             ->whereBetween('date', [$periodStart, $periodEnd])
             ->sum('value');
 
-        $completedOrders = $this->getCompletedOrdersTotal($companyId, $periodStart, $completedStatus, $periodEnd);
+        $completedOrders = array_sum($this->completedOrdersByDay(
+            $companyId, $this->completedStatusId(), $periodStart->toDateString(), $periodEnd->toDateString()));
         $totalIncomes    = $incomes + $completedOrders;
 
         $expenses = Expense::where('company_id', $companyId)
@@ -145,34 +145,65 @@ class TransactionController extends Controller
         ]);
     }
 
+    /**
+     * Resumo (hoje/semana/mês/ano + gráfico de 12 meses).
+     * Busca os totais por dia de todo o intervalo em 3 consultas agregadas e
+     * monta cada período em PHP, em vez de uma consulta por período/mês.
+     */
     public function summary(Request $request)
     {
-        $companyId   = $request->user()->company_id;
-        $today       = Carbon::today();
-        $weekStart   = Carbon::now()->startOfWeek();
-        $monthStart  = Carbon::now()->startOfMonth();
-        $yearStart   = Carbon::now()->startOfYear();
-        $completedStatus = OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->first();
+        $companyId  = $request->user()->company_id;
+        $now        = Carbon::now();
+        $today      = $now->toDateString();
+        $weekStart  = $now->copy()->startOfWeek()->toDateString();
+        $monthStart = $now->copy()->startOfMonth()->toDateString();
+        $yearStart  = $now->copy()->startOfYear()->toDateString();
+        $chartStart = $now->copy()->startOfMonth()->subMonths(11)->toDateString();
 
-        $incomes = [
-            'today' => Income::where('company_id', $companyId)->whereDate('date', $today)->sum('value')
-                + $this->getCompletedOrdersTotal($companyId, $today, $completedStatus),
-            'week'  => Income::where('company_id', $companyId)->whereBetween('date', [$weekStart, now()])->sum('value')
-                + $this->getCompletedOrdersTotal($companyId, $weekStart, $completedStatus, now()),
-            'month' => Income::where('company_id', $companyId)->whereBetween('date', [$monthStart, now()])->sum('value')
-                + $this->getCompletedOrdersTotal($companyId, $monthStart, $completedStatus, now()),
-            'year'  => Income::where('company_id', $companyId)->whereBetween('date', [$yearStart, now()])->sum('value')
-                + $this->getCompletedOrdersTotal($companyId, $yearStart, $completedStatus, now()),
-        ];
+        $from = min($weekStart, $yearStart, $chartStart);
+        $to   = $today;
 
-        $expenses = [
-            'today' => Expense::where('company_id', $companyId)->whereDate('date', $today)->sum('value'),
-            'week'  => Expense::where('company_id', $companyId)->whereBetween('date', [$weekStart, now()])->sum('value'),
-            'month' => Expense::where('company_id', $companyId)->whereBetween('date', [$monthStart, now()])->sum('value'),
-            'year'  => Expense::where('company_id', $companyId)->whereBetween('date', [$yearStart, now()])->sum('value'),
-        ];
+        $completedStatusId = $this->completedStatusId();
+        $incomeByDay  = $this->dailyTotals(Income::where('company_id', $companyId), 'date', 'value', $from, $to);
+        $expenseByDay = $this->dailyTotals(Expense::where('company_id', $companyId), 'date', 'value', $from, $to);
+        $ordersByDay  = $this->completedOrdersByDay($companyId, $completedStatusId, $from, $to);
 
-        $monthlyData = $this->getMonthlyData($companyId);
+        $sumRange = function (array $byDay, string $start) use ($to) {
+            $total = 0.0;
+            foreach ($byDay as $day => $value) {
+                if ($day >= $start && $day <= $to) $total += $value;
+            }
+            return $total;
+        };
+
+        $periods = ['today' => $today, 'week' => $weekStart, 'month' => $monthStart, 'year' => $yearStart];
+        $incomes = $expenses = [];
+        foreach ($periods as $key => $start) {
+            $incomes[$key]  = $sumRange($incomeByDay, $start) + $sumRange($ordersByDay, $start);
+            $expenses[$key] = $sumRange($expenseByDay, $start);
+        }
+
+        $monthly = [];
+        foreach ([$incomeByDay, $ordersByDay] as $byDay) {
+            foreach ($byDay as $day => $v) $monthly[substr($day, 0, 7)]['income'] = ($monthly[substr($day, 0, 7)]['income'] ?? 0) + $v;
+        }
+        foreach ($expenseByDay as $day => $v) $monthly[substr($day, 0, 7)]['expense'] = ($monthly[substr($day, 0, 7)]['expense'] ?? 0) + $v;
+
+        $monthlyData = [];
+        for ($i = 11; $i >= 0; $i--) {
+            // Parte do 1º do mês atual para evitar overflow em meses curtos
+            $date   = $now->copy()->startOfMonth()->subMonths($i);
+            $key    = $date->format('Y-m');
+            $income = (float) ($monthly[$key]['income'] ?? 0);
+            $expense = (float) ($monthly[$key]['expense'] ?? 0);
+            $monthlyData[] = [
+                'month'   => $key,
+                'label'   => $date->format('M/Y'),
+                'income'  => $income,
+                'expense' => $expense,
+                'balance' => $income - $expense,
+            ];
+        }
 
         return response()->json([
             'incomes'       => $incomes,
@@ -181,73 +212,54 @@ class TransactionController extends Controller
         ]);
     }
 
-    private function getCompletedOrdersTotal(int $companyId, $startDate, $completedStatus, $endDate = null): float
+    private function completedStatusId(): ?int
     {
-        if (!$completedStatus) {
-            return 0;
-        }
-
-        $query = OrderService::where('company_id', $companyId)
-            ->where('orders_status_id', $completedStatus->id)
-            ->with(['parts', 'services']);
-
-        if ($endDate) {
-            $query->whereBetween('updated_at', [$startDate, $endDate]);
-        } else {
-            $query->whereDate('updated_at', $startDate);
-        }
-
-        $total = 0;
-        foreach ($query->get() as $order) {
-            $total += $order->total;
-        }
-
-        return (float) $total;
+        return OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->value('id');
     }
 
-    private function getMonthlyData(int $companyId): array
+    /** Soma de $valueCol agrupada por dia (Y-m-d => float) entre $from e $to. */
+    private function dailyTotals($query, string $dateCol, string $valueCol, string $from, string $to): array
     {
-        $months          = [];
-        $completedStatus = OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->first();
+        return $query->whereBetween(DB::raw("DATE({$dateCol})"), [$from, $to])
+            ->selectRaw("DATE({$dateCol}) as day, SUM({$valueCol}) as total")
+            ->groupBy('day')
+            ->pluck('total', 'day')
+            ->map(fn($v) => (float) $v)
+            ->all();
+    }
 
-        for ($i = 11; $i >= 0; $i--) {
-            // Parte do 1º do mês atual para evitar overflow em meses curtos
-            // (ex: 31/ago - 11 meses = 31/set → transborda para 01/out)
-            $date       = Carbon::now()->startOfMonth()->subMonths($i);
-            $monthKey   = $date->format('Y-m');
-            $monthLabel = $date->format('M/Y');
+    /**
+     * Receita das OS concluídas por dia (data = updated_at), calculada no banco
+     * com a mesma regra de OrderService::total:
+     * peças = (unit_price ?? price ?? 0) × max(1, quantidade); serviços = price.
+     */
+    private function completedOrdersByDay(int $companyId, ?int $statusId, string $from, string $to): array
+    {
+        if (!$statusId) return [];
 
-            $income = Income::where('company_id', $companyId)
-                ->whereYear('date', $date->year)
-                ->whereMonth('date', $date->month)
-                ->sum('value');
+        $orders = DB::table('order_services')
+            ->where('company_id', $companyId)
+            ->where('orders_status_id', $statusId)
+            ->whereNull('deleted_at')
+            ->whereBetween(DB::raw('DATE(updated_at)'), [$from, $to])
+            ->select('id', DB::raw('DATE(updated_at) as day'));
 
-            $completedOrdersIncome = 0;
-            if ($completedStatus) {
-                $completedOrdersIncome = $this->getCompletedOrdersTotal(
-                    $companyId,
-                    $date->copy()->startOfMonth(),
-                    $completedStatus,
-                    $date->copy()->endOfMonth()
-                );
-            }
+        $parts = DB::table('parts as p')
+            ->joinSub($orders, 'o', 'o.id', '=', 'p.orders_id')
+            ->whereNull('p.deleted_at')
+            ->selectRaw("o.day, SUM(COALESCE(p.unit_price, p.price, 0) * GREATEST(1, CAST(COALESCE(NULLIF(p.quantity, ''), '1') AS DECIMAL(12,3)))) as total")
+            ->groupBy('o.day');
 
-            $expense = Expense::where('company_id', $companyId)
-                ->whereYear('date', $date->year)
-                ->whereMonth('date', $date->month)
-                ->sum('value');
+        $services = DB::table('services as s')
+            ->joinSub($orders, 'o', 'o.id', '=', 's.orders_id')
+            ->whereNull('s.deleted_at')
+            ->selectRaw('o.day, SUM(COALESCE(s.price, 0)) as total')
+            ->groupBy('o.day');
 
-            $totalIncome = $income + $completedOrdersIncome;
-
-            $months[] = [
-                'month'   => $monthKey,
-                'label'   => $monthLabel,
-                'income'  => (float) $totalIncome,
-                'expense' => (float) $expense,
-                'balance' => (float) ($totalIncome - $expense),
-            ];
+        $byDay = [];
+        foreach ($parts->unionAll($services)->get() as $row) {
+            $byDay[$row->day] = ($byDay[$row->day] ?? 0) + (float) $row->total;
         }
-
-        return $months;
+        return $byDay;
     }
 }
