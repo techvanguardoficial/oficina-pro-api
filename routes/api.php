@@ -67,15 +67,15 @@ Route::prefix('v1')->group(function () {
         return response()->json(['status' => 'API V1 Servcar is alive!'], 200);
     });
 
-    Route::post('login', [AuthController::class, 'login']);
-    Route::post('register', [AuthController::class, 'register']);
-    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
     Route::get('reset-password/{token}', function (Request $request, $token) {
         $email = $request->query('email');
         $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000')), '/');
         return redirect("{$frontendUrl}/reset-password?token={$token}&email=" . urlencode($email));
     })->name('password.reset');
-    Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+    Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1')->name('password.update');
 
     // Planos - Público
     Route::get('plans', [SubscriptionController::class, 'listPlans']);
@@ -114,7 +114,10 @@ Route::prefix('v1')->group(function () {
         Route::get('payment-methods', [PaymentController::class, 'listPaymentMethods']);
         Route::post('payment-methods/{id}/delete', [PaymentController::class, 'deletePaymentMethod']);
         Route::post('payment-methods/{id}/set-default', [PaymentController::class, 'setDefaultPaymentMethod']);
+    });
 
+    // Uso do sistema: exige assinatura ativa (ou em período de teste).
+    Route::middleware(['auth:sanctum', 'subscribed'])->group(function () {
         Route::apiResource('users', UserController::class);
         Route::apiResource('clients', ClientController::class);
         Route::get('clients/{client}/vehicles', [ClientController::class, 'getVehicles']);
