@@ -17,7 +17,11 @@ return [
 
     'paths' => ['*'],
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['*'],
+    // Origens permitidas, separadas por vírgula. Ex.:
+    // CORS_ALLOWED_ORIGINS=https://app.fourauto.com.br,https://portal.fourauto.com.br
+    // Sem a variável, continua liberado para qualquer origem.
+    'allowed_origins' => array_values(array_filter(array_map('trim',
+        explode(',', env('CORS_ALLOWED_ORIGINS', '*'))))),
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
     'exposed_headers' => [],

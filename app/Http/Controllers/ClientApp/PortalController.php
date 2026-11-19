@@ -347,7 +347,7 @@ class PortalController extends Controller
         }
 
         $vehicle   = Vehicle::withoutGlobalScopes()->with(['carModel.maker'])->find($vehicleIds->first());
-        $perPage   = (int) $request->query('per_page', 15);
+        $perPage   = min(max((int) $request->query('per_page', 15), 1), 100);
         $companyId = $request->query('company_id');
 
         $query = OrderService::withoutGlobalScopes()

@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Services\StripeSubscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Stripe\Exception\ApiErrorException;
 
 class SubscriptionController extends Controller
@@ -187,13 +188,24 @@ class SubscriptionController extends Controller
             $data['stripe_invoice_url'] = null;
 
             if ($invoice->stripe_invoice_id) {
-                try {
-                    $stripeInvoice = $this->stripe->invoices->retrieve($invoice->stripe_invoice_id);
-                    $data['stripe_invoice_url'] = $stripeInvoice->hosted_invoice_url ?? null;
-                    $data['invoice_pdf'] = $stripeInvoice->invoice_pdf ?? null;
-                } catch (\Exception $e) {
-                    // ignore
+                // Links da fatura em cache por 6h: evita uma chamada ao Stripe
+                // por fatura a cada abertura da tela. Falhas não são cacheadas.
+                $cacheKey = "stripe_invoice_links:{$invoice->stripe_invoice_id}";
+                $links = Cache::get($cacheKey);
+                if ($links === null) {
+                    try {
+                        $stripeInvoice = $this->stripe->invoices->retrieve($invoice->stripe_invoice_id);
+                        $links = [
+                            'url' => $stripeInvoice->hosted_invoice_url ?? null,
+                            'pdf' => $stripeInvoice->invoice_pdf ?? null,
+                        ];
+                        Cache::put($cacheKey, $links, now()->addHours(6));
+                    } catch (\Exception $e) {
+                        $links = ['url' => null, 'pdf' => null];
+                    }
                 }
+                $data['stripe_invoice_url'] = $links['url'];
+                $data['invoice_pdf'] = $links['pdf'];
             }
 
             return $data;

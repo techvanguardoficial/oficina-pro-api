@@ -29,7 +29,7 @@ class VehicleController extends Controller
             $query->where('placa', 'like', '%' . $request->input('search') . '%');
         }
 
-        $vehicles = $query->paginate($request->input('per_page', 15));
+        $vehicles = $query->paginate(min(max((int) $request->input('per_page', 15), 1), 100));
         return response()->json($vehicles);
     }
 

@@ -47,7 +47,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Padrão: 30 dias (43200 min). Depois disso o usuário precisa logar de novo.
+    'expiration' => env('SANCTUM_EXPIRATION', 43200),
 
     /*
     |--------------------------------------------------------------------------

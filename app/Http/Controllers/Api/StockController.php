@@ -28,7 +28,7 @@ class StockController extends Controller
             });
         }
 
-        $perPage = (int) $request->input('per_page', 15);
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
         $stocks  = $query->paginate($perPage);
 
         return response()->json($stocks);
@@ -37,7 +37,9 @@ class StockController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code'                      => 'required|string|max:255|unique:stocks',
+            // Código único dentro da oficina (oficinas diferentes podem repetir)
+            'code'                      => ['required', 'string', 'max:255',
+                Rule::unique('stocks', 'code')->where('company_id', $request->user()->company_id)],
             'name'                      => 'required|string|max:255',
             'description'               => 'nullable|string',
             'unit_of_measurement'       => 'required|string|max:50',
@@ -81,7 +83,8 @@ class StockController extends Controller
         $this->authorizeCompany($stock);
 
         $validated = $request->validate([
-            'code'                      => 'sometimes|string|max:255|unique:stocks,code,' . $stock->id,
+            'code'                      => ['sometimes', 'string', 'max:255',
+                Rule::unique('stocks', 'code')->where('company_id', $stock->company_id)->ignore($stock->id)],
             'name'                      => 'sometimes|string|max:255',
             'description'               => 'sometimes|nullable|string',
             'unit_of_measurement'       => 'sometimes|string|max:50',
@@ -121,10 +124,11 @@ class StockController extends Controller
         return response()->json(null, 204);
     }
 
-    public function generateSku(): \Illuminate\Http\JsonResponse
+    public function generateSku(Request $request): \Illuminate\Http\JsonResponse
     {
+        $companyId = $request->user()->company_id;
         $sku = 'SKU-' . strtoupper(Str::random(8));
-        while (Stock::withoutGlobalScopes()->where('code', $sku)->exists()) {
+        while (Stock::withoutGlobalScopes()->where('company_id', $companyId)->where('code', $sku)->exists()) {
             $sku = 'SKU-' . strtoupper(Str::random(8));
         }
         return response()->json(['sku' => $sku]);
