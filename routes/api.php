@@ -143,6 +143,7 @@ Route::prefix('v1')->group(function () {
         Route::get('transactions/period', [TransactionController::class, 'period']);
         Route::get('transactions/list', [TransactionController::class, 'list']);
 
+        Route::get('dashboard/stats', [DashboardController::class, 'stats']);
         Route::get('dashboard/top-vehicle-models', [DashboardController::class, 'topVehicleModels']);
         Route::get('dashboard/top-clients', [DashboardController::class, 'topClients']);
         Route::get('dashboard/in-progress-orders', [DashboardController::class, 'inProgressOrders']);

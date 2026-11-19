@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Endpoints agregados para os gráficos do dashboard.
@@ -18,6 +19,35 @@ use Illuminate\Support\Facades\DB;
  */
 class DashboardController extends Controller
 {
+    /**
+     * Totais dos cards do dashboard em uma única chamada.
+     * GET /api/v1/dashboard/stats
+     */
+    public function stats(Request $request)
+    {
+        $companyId = $request->user()->company_id;
+        $budgetTypeId = DB::table('orders_types')->where('type', 'ORÇAMENTO')->value('id') ?? 1;
+
+        $orders = DB::table('order_services')
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->selectRaw('COUNT(*) as total, SUM(orders_types_id = ?) as quotes', [$budgetTypeId])
+            ->first();
+
+        $count = fn(string $table) => DB::table($table)
+            ->where('company_id', $companyId)
+            ->when(Schema::hasColumn($table, 'deleted_at'), fn($q) => $q->whereNull('deleted_at'))
+            ->count();
+
+        return response()->json([
+            'totalOrders'   => (int) $orders->total,
+            'totalQuotes'   => (int) $orders->quotes,
+            'totalClients'  => $count('clients'),
+            'totalVehicles' => $count('vehicles'),
+            'totalStock'    => $count('stocks'),
+        ]);
+    }
+
     /**
      * Modelos de veículos mais atendidos (quantidade de O.S. por modelo).
      * GET /api/v1/dashboard/top-vehicle-models?limit=5
