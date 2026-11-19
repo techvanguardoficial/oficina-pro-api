@@ -245,6 +245,8 @@ class ImportBackup extends Command
                 'company_id'       => $this->companyId,
                 'orders_types_id'  => $row['orders_types_id'],
                 'orders_status_id' => $row['orders_status_id'],
+                'completed_at'     => in_array((int) $row['orders_status_id'], \App\Models\OrderService::completedStatusIds(), true)
+                    ? $row['updated_at'] : null,
                 'created_at'       => $row['created_at'],
                 'updated_at'       => $row['updated_at'],
                 'deleted_at'       => $row['deleted_at'] ?? null,
@@ -338,7 +340,12 @@ class ImportBackup extends Command
                     DB::table('order_services')
                         ->where('company_id', $this->companyId)
                         ->whereIn('id', $chunk)
-                        ->update(['orders_types_id' => $type, 'orders_status_id' => $status]);
+                        ->update([
+                            'orders_types_id'  => $type,
+                            'orders_status_id' => $status,
+                            'completed_at'     => in_array((int) $status, \App\Models\OrderService::completedStatusIds(), true)
+                                ? DB::raw('COALESCE(completed_at, updated_at)') : null,
+                        ]);
                 }
             }
         });

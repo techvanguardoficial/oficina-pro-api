@@ -46,16 +46,16 @@ class TransactionController extends Controller
             'source'      => 'manual',
         ]);
 
-        // Receitas de ordens concluídas (filtradas por updated_at)
-        $completedStatus = OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->first();
+        // Receitas de ordens concluídas (filtradas pela data de conclusão)
+        $completedStatusId = $this->completedStatusId();
         $orderIncomes = collect();
 
-        if ($completedStatus) {
+        if ($completedStatusId) {
             $orders = OrderService::where('company_id', $companyId)
-                ->where('orders_status_id', $completedStatus->id)
-                ->whereBetween('updated_at', [$start, $end])
+                ->where('orders_status_id', $completedStatusId)
+                ->whereBetween('completed_at', [$start, $end])
                 ->with(['parts', 'services', 'vehicle'])
-                ->orderBy('updated_at')
+                ->orderBy('completed_at')
                 ->get();
 
             $orderIncomes = $orders->map(function ($order) {
@@ -66,7 +66,7 @@ class TransactionController extends Controller
                     'type'        => 'Receita',
                     'description' => "OS #{$order->id}" . ($placa ? " — {$placa}" : ''),
                     'amount'      => (float) $total,
-                    'date'        => $order->updated_at ? $order->updated_at->toDateString() : now()->toDateString(),
+                    'date'        => $order->completed_at ? $order->completed_at->toDateString() : now()->toDateString(),
                     'source'      => 'order',
                 ];
             });
@@ -214,7 +214,7 @@ class TransactionController extends Controller
 
     private function completedStatusId(): ?int
     {
-        return OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->value('id');
+        return OrderService::completedStatusIds()[0] ?? null;
     }
 
     /** Soma de $valueCol agrupada por dia (Y-m-d => float) entre $from e $to. */
@@ -229,7 +229,7 @@ class TransactionController extends Controller
     }
 
     /**
-     * Receita das OS concluídas por dia (data = updated_at), calculada no banco
+     * Receita das OS concluídas por dia (data = completed_at), calculada no banco
      * com a mesma regra de OrderService::total:
      * peças = (unit_price ?? price ?? 0) × max(1, quantidade); serviços = price.
      */
@@ -241,8 +241,8 @@ class TransactionController extends Controller
             ->where('company_id', $companyId)
             ->where('orders_status_id', $statusId)
             ->whereNull('deleted_at')
-            ->whereBetween(DB::raw('DATE(updated_at)'), [$from, $to])
-            ->select('id', DB::raw('DATE(updated_at) as day'));
+            ->whereBetween('completed_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            ->select('id', DB::raw('DATE(completed_at) as day'));
 
         $parts = DB::table('parts as p')
             ->joinSub($orders, 'o', 'o.id', '=', 'p.orders_id')

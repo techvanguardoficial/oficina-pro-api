@@ -24,7 +24,31 @@ class OrderService extends Model
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'completed_at' => 'datetime',
     ];
+
+    /** IDs de orders_status que significam "concluída". */
+    public static function completedStatusIds(): array
+    {
+        static $ids = null;
+        return $ids ??= OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->pluck('id')->all();
+    }
+
+    protected static function booted(): void
+    {
+        // Registra a data de conclusão ao entrar no status concluído
+        // e limpa se a OS for reaberta.
+        static::saving(function (OrderService $order) {
+            if (!$order->isDirty('orders_status_id') && $order->exists) return;
+
+            $isCompleted = in_array((int) $order->orders_status_id, self::completedStatusIds(), true);
+            if ($isCompleted && !$order->completed_at) {
+                $order->completed_at = now();
+            } elseif (!$isCompleted) {
+                $order->completed_at = null;
+            }
+        });
+    }
 
     // Relationships
     public function vehicle(): BelongsTo
