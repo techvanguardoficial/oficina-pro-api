@@ -110,6 +110,8 @@ class OrderServiceController extends Controller
             return $limitCheck;
         }
 
+        $this->dropBlankItems($request);
+
         $validated = $request->validate([
             'vehicle_placa' => [
                 'required',
@@ -214,6 +216,7 @@ class OrderServiceController extends Controller
     public function update(Request $request, OrderService $orderService)
     {
         $this->authorizeCompany($orderService);
+        $this->dropBlankItems($request);
 
         $validated = $request->validate([
             'orders_types_id'          => 'sometimes|integer|exists:orders_types,id',
@@ -324,5 +327,27 @@ class OrderServiceController extends Controller
         });
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * Linha de peça ou serviço sem descrição e sem valor é uma linha vazia do formulário
+     * (ou o item fantasma de OS antigas), não um item: some antes da validação.
+     * Regressão: editar essas OS respondia 422 "parts.0.description is required".
+     */
+    private function dropBlankItems(Request $request): void
+    {
+        foreach (['parts' => 'unit_price', 'services' => 'price'] as $key => $priceField) {
+            $items = $request->input($key);
+            if (!is_array($items)) {
+                continue;
+            }
+
+            $request->merge([$key => array_values(array_filter($items, fn($item) => !(
+                is_array($item)
+                && trim((string) ($item['description'] ?? '')) === ''
+                && (float) ($item[$priceField] ?? 0) <= 0
+                && empty($item['stock_id'])
+            )))]);
+        }
     }
 }
