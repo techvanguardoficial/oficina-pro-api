@@ -154,6 +154,64 @@ class AuthController extends Controller
     }
 
     /**
+     * "Esqueci minha senha". A resposta é sempre a mesma, exista ou não a conta,
+     * para não revelar quais e-mails têm cadastro no Portal.
+     */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $exists = ClientAppUser::where('email', $request->email)
+            ->where('onboarding_completed', true)
+            ->exists();
+
+        if ($exists) {
+            Password::broker('client_app_users')->sendResetLink($request->only('email'));
+        }
+
+        return response()->json([
+            'message' => 'Se houver uma conta com esse e-mail, enviamos um link para criar uma nova senha.',
+        ]);
+    }
+
+    /**
+     * Nova senha pelo link do e-mail. Encerra as outras sessões e já entra no Portal.
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token'    => 'required|string',
+            'email'    => 'required|email',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $appUser = null;
+        $status = Password::broker('client_app_users')->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (ClientAppUser $user, string $password) use (&$appUser) {
+                $user->forceFill(['password' => Hash::make($password)])->save();
+                $user->tokens()->delete();
+                $appUser = $user;
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET || !$appUser) {
+            return response()->json([
+                'message' => 'Este link expirou ou já foi usado. Peça um novo.',
+                'code'    => 'INVALID_RESET_TOKEN',
+            ], 422);
+        }
+
+        $appUser->update(['last_login_at' => now()]);
+
+        return response()->json([
+            'message'      => 'Senha criada. Você já está dentro.',
+            'access_token' => $appUser->createToken('client-portal', ['client'])->plainTextToken,
+            'user'         => $this->userResource($appUser),
+        ]);
+    }
+
+    /**
      * Logout.
      */
     public function logout(Request $request)

@@ -15,6 +15,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // Endereço do Portal do Cliente (links de e-mail enviados ao motorista)
+    'client_portal_url' => env('CLIENT_PORTAL_URL', 'http://localhost:5174'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

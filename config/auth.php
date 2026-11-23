@@ -105,6 +105,13 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+        // Portal do Cliente: tabela própria, porque um e-mail pode ser de oficina e de cliente
+        'client_app_users' => [
+            'provider' => 'client_app_users',
+            'table' => 'client_password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
     ],
 
     /*

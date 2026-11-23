@@ -114,10 +114,10 @@
     <div class="wrapper">
         <div class="card">
             <div class="header">
-                @if(file_exists(public_path('logo.png')))
+                @if(empty($brand) && file_exists(public_path('logo.png')))
                     <img src="{{ asset('logo.png') }}" alt="OficinaPro">
                 @else
-                    <span class="header-fallback">OficinaPro</span>
+                    <span class="header-fallback">{{ $brand ?? 'OficinaPro' }}</span>
                 @endif
             </div>
 
@@ -156,7 +156,7 @@
 
             <div class="footer">
                 <p>
-                    Este e-mail foi enviado automaticamente pela plataforma OficinaPro.<br>
+                    Este e-mail foi enviado automaticamente pela plataforma {{ $brand ?? 'OficinaPro' }}.<br>
                     Por favor, não responda a este e-mail.
                 </p>
             </div>

@@ -5,12 +5,14 @@ namespace App\Models;
 use App\Models\Scopes\CompanyScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Notifications\ClientResetPasswordNotification;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class ClientAppUser extends Authenticatable
 {
-    use HasApiTokens;
+    use HasApiTokens, Notifiable;
 
     protected $fillable = [
         'name',
@@ -32,6 +34,12 @@ class ClientAppUser extends Authenticatable
         'email_verified_at'      => 'datetime',
         'onboarding_completed'   => 'boolean',
     ];
+
+    /** Link de nova senha aponta para o Portal, não para o sistema da oficina */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ClientResetPasswordNotification($token));
+    }
 
     public function clients(): BelongsToMany
     {

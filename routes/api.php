@@ -39,7 +39,9 @@ Route::prefix('v1')->group(function () {
             Route::post('auth/verify-code',            [ClientAuthController::class, 'verifyPortalCode']);
             Route::post('auth/complete-signup-by-code',[ClientAuthController::class, 'completeSignupByCode']);
             Route::post('auth/login',                  [ClientAuthController::class, 'login']);
+            Route::post('auth/reset-password',         [ClientAuthController::class, 'resetPassword']);
         });
+        Route::post('auth/forgot-password', [ClientAuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
 
         // Protegidas — requer token Sanctum de ClientAppUser (guard client)
         Route::middleware('auth:client')->group(function () {
@@ -59,6 +61,7 @@ Route::prefix('v1')->group(function () {
             Route::post('vehicles/{placa}/maintenance',                   [PortalController::class, 'storeMaintenanceSchedule']);
             Route::put('vehicles/{placa}/maintenance/{id}',               [PortalController::class, 'updateMaintenanceSchedule']);
             Route::delete('vehicles/{placa}/maintenance/{id}',            [PortalController::class, 'deleteMaintenanceSchedule']);
+            Route::post('vehicles/{placa}/maintenance/{id}/done',         [PortalController::class, 'completeMaintenanceSchedule']);
         });
     });
     // ───────────────────────────────────────────────────────────────────────
