@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -105,9 +106,12 @@ class DashboardController extends Controller
     }
 
     /**
-     * Ordens de serviço atualmente "Em andamento" — para a área de
-     * acompanhamento em tempo real no dashboard.
+     * Ordens de serviço não finalizadas (nem concluídas nem canceladas), para a
+     * área de acompanhamento do dashboard. Mesmo critério do filtro "Não finalizadas"
+     * da listagem de OS (list-all?status=open).
+     *
      * GET /api/v1/dashboard/in-progress-orders?limit=10
+     * Resposta: { total: int, orders: [...] }, com `total` sem o limite aplicado.
      */
     public function inProgressOrders(Request $request)
     {
@@ -115,17 +119,22 @@ class DashboardController extends Controller
         $limit = (int) $request->query('limit', 10);
         $limit = $limit > 0 ? min($limit, 100) : 10;
 
-        $rows = DB::table('order_services as os')
+        $base = DB::table('order_services as os')
+            ->where('os.company_id', $companyId)
+            ->whereNull('os.deleted_at')
+            ->whereNotIn('os.orders_status_id', OrderService::closedStatusIds());
+
+        $total = (clone $base)->count();
+
+        $rows = $base
             ->join('orders_status as st', 'st.id', '=', 'os.orders_status_id')
             ->join('vehicles as v', 'v.id', '=', 'os.vehicle_id')
             ->leftJoin('clients as c', 'c.id', '=', 'v.clients_id')
             ->leftJoin('car_models as cm', 'cm.id', '=', 'v.car_models_id')
-            ->where('os.company_id', $companyId)
-            ->whereNull('os.deleted_at')
-            ->where('st.status', 'Em andamento')
             ->select(
                 'os.id as id',
                 'os.created_at as created_at',
+                'st.status as status',
                 'v.placa as placa',
                 'c.id as client_id',
                 DB::raw('COALESCE(cm.model, "") as model'),
@@ -135,15 +144,17 @@ class DashboardController extends Controller
             ->limit($limit)
             ->get();
 
-        return response()->json(
-            $rows->map(fn ($r) => [
+        return response()->json([
+            'total'  => $total,
+            'orders' => $rows->map(fn ($r) => [
                 'id'         => (int) $r->id,
+                'status'     => $r->status,
                 'placa'      => $r->placa,
                 'clientId'   => $r->client_id !== null ? (int) $r->client_id : null,
                 'model'      => $r->model,
                 'clientName' => $r->client_name,
                 'createdAt'  => $r->created_at,
-            ])
-        );
+            ]),
+        ]);
     }
 }

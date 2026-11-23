@@ -11,7 +11,8 @@ use Tests\TestCase;
 
 /**
  * Filtro por status da listagem de OS (GET /order-services/list-all?status=)
- * e contagem por status (GET /order-services/status-counts).
+ * contagem por status (GET /order-services/status-counts) e o painel de OS não finalizadas
+ * do dashboard (GET /dashboard/in-progress-orders).
  */
 class OrderServiceStatusFilterTest extends TestCase
 {
@@ -128,9 +129,25 @@ class OrderServiceStatusFilterTest extends TestCase
         $this->assertSame(0, $totals['Aguardando Peça']);
     }
 
+    public function test_dashboard_lists_non_finalized_orders_with_real_total(): void
+    {
+        $this->authenticateUser();
+
+        $response = $this->getJson('/api/v1/dashboard/in-progress-orders?limit=2');
+
+        // total ignora o limite: 2 em andamento + 1 aberta, sem as de outra oficina
+        $response->assertStatus(200)
+            ->assertJsonPath('total', 3)
+            ->assertJsonCount(2, 'orders');
+
+        $statuses = collect($response->json('orders'))->pluck('status')->unique()->all();
+        $this->assertEmpty(array_intersect($statuses, ['Concluído', 'Cancelado']));
+    }
+
     public function test_requires_authentication(): void
     {
         $this->getJson('/api/v1/order-services/list-all?status=open')->assertStatus(401);
         $this->getJson('/api/v1/order-services/status-counts')->assertStatus(401);
+        $this->getJson('/api/v1/dashboard/in-progress-orders')->assertStatus(401);
     }
 }
