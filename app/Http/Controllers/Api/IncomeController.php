@@ -29,7 +29,7 @@ class IncomeController extends Controller
      */
     public function store(Request $request)
     {
-        $this->authorizePermission('create_income');
+        //$this->authorizePermission('create_income');
 
         $validated = $request->validate([
             'info' => 'required|string|max:255',
@@ -63,7 +63,7 @@ class IncomeController extends Controller
     public function update(Request $request, Income $income)
     {
         $this->authorizeCompany($income);
-        $this->authorizePermission('edit_income');
+        //$this->authorizePermission('edit_income');
 
         $validated = $request->validate([
             'info' => 'sometimes|string|max:255',

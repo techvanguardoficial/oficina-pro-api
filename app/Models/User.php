@@ -86,8 +86,17 @@ class User extends Authenticatable
         return $this->roles()->whereIn('name', $roles)->exists();
     }
 
+    /**
+     * O administrador da oficina (admin = '1') tem todas as permissões, como o papel "admin".
+     * Os papéis (user_role) não são atribuídos em lugar nenhum do sistema hoje, então sem
+     * isso o dono da oficina ficava sem permissão para lançar receitas e ver a assinatura.
+     */
     public function hasPermission(string|array $permissions): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         if (is_string($permissions)) {
             return $this->roles()
                 ->whereHas('permissions', fn($q) => $q->where('name', $permissions))
@@ -101,6 +110,10 @@ class User extends Authenticatable
 
     public function hasAnyPermission(array $permissions): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         return $this->roles()
             ->whereHas('permissions', fn($q) => $q->whereIn('name', $permissions))
             ->exists();
