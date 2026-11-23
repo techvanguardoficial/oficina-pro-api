@@ -30,6 +30,7 @@ class ClientControllerTest extends TestCase
             'email' => 'john@example.com',
             'cpf_cnpj' => '12345678901234',
             'status' => true,
+            'phone_one' => '11987654321',
         ];
 
         $response = $this->postJson('/api/v1/clients', $clientData);
@@ -108,14 +109,34 @@ class ClientControllerTest extends TestCase
     {
         $this->authenticateUser();
 
-        $clientData = [
-            'name' => 'John',
-        ];
-
-        $response = $this->postJson('/api/v1/clients', $clientData);
+        // Só nome e telefone são obrigatórios; o resto o cliente completa no Portal
+        $response = $this->postJson('/api/v1/clients', ['lastname' => 'Doe']);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['lastname', 'email', 'cpf_cnpj'], 'details');
+            ->assertJsonValidationErrors(['name', 'phone_one'], 'details')
+            ->assertJsonMissingValidationErrors(['lastname', 'email', 'cpf_cnpj'], 'details');
+    }
+
+    public function test_can_create_client_with_only_name_and_phone(): void
+    {
+        $this->authenticateUser();
+
+        // O modal manda os campos não preenchidos como texto vazio
+        $this->postJson('/api/v1/clients', [
+            'name' => 'Rosane', 'lastname' => '', 'email' => '', 'cpf_cnpj' => '',
+            'phone_one' => '11987654321', 'phone_two' => '',
+            'address' => '', 'number' => '', 'district' => '', 'city' => '', 'uf' => '', 'zipcode' => '',
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('clients', [
+            'name' => 'Rosane', 'email' => null, 'cpf_cnpj' => null, 'company_id' => $this->company->id,
+        ]);
+        $this->assertDatabaseHas('phones', ['phone_one' => '11987654321']);
+
+        // Um segundo cliente sem e-mail nem CPF não esbarra na regra de "já cadastrado"
+        $this->postJson('/api/v1/clients', [
+            'name' => 'Carlos', 'email' => '', 'cpf_cnpj' => '', 'phone_one' => '11912345678',
+        ])->assertStatus(201);
     }
 
     public function test_can_view_client(): void

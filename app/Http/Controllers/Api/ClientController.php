@@ -67,12 +67,13 @@ class ClientController extends Controller
         }
 
         $validated = $request->validate([
+            // Obrigatórios só nome e telefone: o resto o cliente completa no Portal
             'name' => 'required|string|max:255',
-            'lastname' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('clients')->where('company_id', auth()->user()->company_id)],
-            'cpf_cnpj' => ['required', 'string', 'max:20', Rule::unique('clients')->where('company_id', auth()->user()->company_id)],
+            'lastname' => 'nullable|string|max:255',
+            'email' => ['nullable', 'string', 'email', 'max:255', Rule::unique('clients')->where('company_id', auth()->user()->company_id)],
+            'cpf_cnpj' => ['nullable', 'string', 'max:20', Rule::unique('clients')->where('company_id', auth()->user()->company_id)],
             'status' => 'boolean',
-            'phone_one' => 'nullable|string|max:20',
+            'phone_one' => 'required|string|max:20',
             'phone_two' => 'nullable|string|max:20',
             'phone_three' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
@@ -181,9 +182,9 @@ class ClientController extends Controller
 
         $validated = $request->validate([
             'name'      => 'sometimes|string|max:255',
-            'lastname'  => 'sometimes|string|max:255',
-            'email'     => ['sometimes', 'string', 'email', 'max:255', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
-            'cpf_cnpj'  => ['sometimes', 'string', 'max:20', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
+            'lastname'  => 'sometimes|nullable|string|max:255',
+            'email'     => ['sometimes', 'nullable', 'string', 'email', 'max:255', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
+            'cpf_cnpj'  => ['sometimes', 'nullable', 'string', 'max:20', Rule::unique('clients')->where('company_id', auth()->user()->company_id)->ignore($client->id)],
             'status'    => 'sometimes|boolean',
             // phone
             'phone_one'   => 'nullable|string|max:20',
