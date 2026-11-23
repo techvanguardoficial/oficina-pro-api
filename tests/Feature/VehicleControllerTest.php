@@ -98,7 +98,7 @@ class VehicleControllerTest extends TestCase
         $response = $this->postJson('/api/v1/vehicles', $data);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('placa');
+            ->assertJsonValidationErrors('placa', 'details');
     }
 
     public function test_cannot_create_vehicle_with_invalid_placa_length(): void
@@ -113,7 +113,7 @@ class VehicleControllerTest extends TestCase
         $response = $this->postJson('/api/v1/vehicles', $data);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('placa');
+            ->assertJsonValidationErrors('placa', 'details');
     }
 
     public function test_cannot_create_vehicle_without_required_fields(): void
@@ -123,7 +123,7 @@ class VehicleControllerTest extends TestCase
         $response = $this->postJson('/api/v1/vehicles', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['placa', 'car_models_id']);
+            ->assertJsonValidationErrors(['placa', 'car_models_id'], 'details');
     }
 
     public function test_cannot_create_vehicle_with_invalid_year(): void
@@ -139,7 +139,7 @@ class VehicleControllerTest extends TestCase
         $response = $this->postJson('/api/v1/vehicles', $data);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('year');
+            ->assertJsonValidationErrors('year', 'details');
     }
 
     public function test_cannot_create_vehicle_with_negative_km(): void
@@ -155,7 +155,7 @@ class VehicleControllerTest extends TestCase
         $response = $this->postJson('/api/v1/vehicles', $data);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('km');
+            ->assertJsonValidationErrors('km', 'details');
     }
 
     public function test_can_view_vehicle(): void
@@ -219,8 +219,13 @@ class VehicleControllerTest extends TestCase
 
     public function test_cannot_create_vehicle_exceeding_plan_limit(): void
     {
-        // Update plan to have a vehicle limit of 0
-        $this->plan->update(['max_vehicles' => 0]);
+        // Limite 0 significa ilimitado; com limite 1 e um veículo já cadastrado, o próximo é bloqueado
+        $this->plan->update(['max_vehicles' => 1]);
+        Vehicle::factory()->create([
+            'company_id' => $this->company->id,
+            'clients_id' => $this->client->id,
+            'car_models_id' => $this->carModel->id,
+        ]);
         $this->authenticateUser();
 
         $data = [

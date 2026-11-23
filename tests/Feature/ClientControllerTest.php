@@ -7,15 +7,17 @@ use Tests\TestCase;
 
 class ClientControllerTest extends TestCase
 {
-    public function test_can_list_all_clients(): void
+    public function test_can_list_only_clients_of_own_company(): void
     {
         $this->authenticateUser();
         Client::factory(3)->create(['company_id' => $this->company->id]);
+        Client::factory()->create(); // outra oficina
 
         $response = $this->getJson('/api/v1/clients');
 
         $response->assertStatus(200)
-            ->assertJsonIsArray();
+            ->assertJsonPath('total', 3)
+            ->assertJsonCount(3, 'data');
     }
 
     public function test_can_create_client_with_valid_data(): void
@@ -78,7 +80,7 @@ class ClientControllerTest extends TestCase
         $response = $this->postJson('/api/v1/clients', $clientData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('email');
+            ->assertJsonValidationErrors('email', 'details');
     }
 
     public function test_cannot_create_client_with_duplicate_cpf_cnpj(): void
@@ -99,7 +101,7 @@ class ClientControllerTest extends TestCase
         $response = $this->postJson('/api/v1/clients', $clientData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('cpf_cnpj');
+            ->assertJsonValidationErrors('cpf_cnpj', 'details');
     }
 
     public function test_cannot_create_client_without_required_fields(): void
@@ -113,7 +115,7 @@ class ClientControllerTest extends TestCase
         $response = $this->postJson('/api/v1/clients', $clientData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['lastname', 'email', 'cpf_cnpj']);
+            ->assertJsonValidationErrors(['lastname', 'email', 'cpf_cnpj'], 'details');
     }
 
     public function test_can_view_client(): void
@@ -166,8 +168,9 @@ class ClientControllerTest extends TestCase
 
     public function test_cannot_create_client_exceeding_plan_limit(): void
     {
-        // Update plan to have a client limit of 0
-        $this->plan->update(['max_clients' => 0]);
+        // Limite 0 significa ilimitado; com limite 1 e um cliente já cadastrado, o próximo é bloqueado
+        $this->plan->update(['max_clients' => 1]);
+        Client::factory()->create(['company_id' => $this->company->id]);
         $this->authenticateUser();
 
         $clientData = [

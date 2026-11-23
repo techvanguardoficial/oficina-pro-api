@@ -27,11 +27,21 @@ class OrderService extends Model
         'completed_at' => 'datetime',
     ];
 
-    /** IDs de orders_status que significam "concluída". */
+    /**
+     * IDs de orders_status que significam "concluída".
+     * once(): uma consulta por requisição; o Laravel limpa esse cache entre testes e entre requisições no Octane.
+     */
     public static function completedStatusIds(): array
     {
-        static $ids = null;
-        return $ids ??= OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->pluck('id')->all();
+        return once(fn () => OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO'])->pluck('id')->all());
+    }
+
+    /** IDs de orders_status que encerram a OS (concluída ou cancelada). O resto conta como "em aberto". */
+    public static function closedStatusIds(): array
+    {
+        return once(fn () => OrderStatus::whereIn('status', ['Concluído', 'CONCLUIDO', 'Cancelado', 'CANCELADO'])
+            ->pluck('id')
+            ->all());
     }
 
     protected static function booted(): void

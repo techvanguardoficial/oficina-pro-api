@@ -5,9 +5,13 @@ namespace Tests\Feature;
 use App\Models\OrderType;
 use Tests\TestCase;
 
+/**
+ * Os tipos de OS são um cadastro global, compartilhado por todas as oficinas.
+ * A API só expõe listagem e consulta; criar, editar ou excluir não é permitido a nenhuma oficina.
+ */
 class OrderTypeControllerTest extends TestCase
 {
-    public function test_can_list_all_order_types(): void
+    public function test_can_list_types(): void
     {
         $this->authenticateUser();
         OrderType::factory(3)->create();
@@ -15,124 +19,38 @@ class OrderTypeControllerTest extends TestCase
         $response = $this->getJson('/api/v1/order-types');
 
         $response->assertStatus(200)
-            ->assertJsonIsArray();
+            ->assertJsonIsArray()
+            ->assertJsonCount(3);
     }
 
-    public function test_can_create_order_type_with_valid_data(): void
+    public function test_can_view_a_type(): void
     {
         $this->authenticateUser();
+        $item = OrderType::factory()->create();
 
-        $data = [
-            'type' => 'Maintenance',
-        ];
-
-        $response = $this->postJson('/api/v1/order-types', $data);
-
-        $response->assertStatus(201)
-            ->assertJsonFragment([
-                'type' => 'Maintenance',
-            ]);
-
-        $this->assertDatabaseHas('order_types', [
-            'type' => 'Maintenance',
-        ]);
-    }
-
-    public function test_cannot_create_order_type_without_authentication(): void
-    {
-        $data = [
-            'type' => 'Maintenance',
-        ];
-
-        $response = $this->postJson('/api/v1/order-types', $data);
-
-        $response->assertStatus(401);
-    }
-
-    public function test_cannot_create_duplicate_order_type(): void
-    {
-        $this->authenticateUser();
-        OrderType::factory()->create(['type' => 'Maintenance']);
-
-        $data = [
-            'type' => 'Maintenance',
-        ];
-
-        $response = $this->postJson('/api/v1/order-types', $data);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors('type');
-    }
-
-    public function test_cannot_create_order_type_without_type(): void
-    {
-        $this->authenticateUser();
-
-        $response = $this->postJson('/api/v1/order-types', []);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors('type');
-    }
-
-    public function test_cannot_exceed_max_length(): void
-    {
-        $this->authenticateUser();
-
-        $data = [
-            'type' => str_repeat('a', 256),
-        ];
-
-        $response = $this->postJson('/api/v1/order-types', $data);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors('type');
-    }
-
-    public function test_can_view_order_type(): void
-    {
-        $this->authenticateUser();
-        $orderType = OrderType::factory()->create();
-
-        $response = $this->getJson("/api/v1/order-types/{$orderType->id}");
+        $response = $this->getJson("/api/v1/order-types/{$item->id}");
 
         $response->assertStatus(200)
             ->assertJsonFragment([
-                'id' => $orderType->id,
-                'type' => $orderType->type,
+                'id' => $item->id,
+                'type' => $item->type,
             ]);
     }
 
-    public function test_can_update_order_type(): void
+    public function test_cannot_list_types_without_authentication(): void
     {
-        $this->authenticateUser();
-        $orderType = OrderType::factory()->create();
-
-        $data = [
-            'type' => 'Updated Type',
-        ];
-
-        $response = $this->putJson("/api/v1/order-types/{$orderType->id}", $data);
-
-        $response->assertStatus(200)
-            ->assertJsonFragment([
-                'type' => 'Updated Type',
-            ]);
-
-        $this->assertDatabaseHas('order_types', [
-            'id' => $orderType->id,
-            'type' => 'Updated Type',
-        ]);
+        $this->getJson('/api/v1/order-types')->assertStatus(401);
     }
 
-    public function test_can_delete_order_type(): void
+    public function test_oficina_cannot_create_update_or_delete_types(): void
     {
         $this->authenticateUser();
-        $orderType = OrderType::factory()->create();
+        $item = OrderType::factory()->create();
 
-        $response = $this->deleteJson("/api/v1/order-types/{$orderType->id}");
+        $this->postJson('/api/v1/order-types', ['type' => 'Novo'])->assertStatus(405);
+        $this->putJson("/api/v1/order-types/{$item->id}", ['type' => 'Alterado'])->assertStatus(405);
+        $this->deleteJson("/api/v1/order-types/{$item->id}")->assertStatus(405);
 
-        $response->assertStatus(204);
-
-        $this->assertSoftDeleted('order_types', ['id' => $orderType->id]);
+        $this->assertDatabaseHas($item->getTable(), ['id' => $item->id, 'type' => $item->type, 'deleted_at' => null]);
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Traits\AuthorizesCompany;
 use App\Http\Traits\ChecksPlanLimits;
 use App\Http\Traits\HasRoleAndPermissions;
 use App\Models\OrderService;
+use App\Models\OrderStatus;
 use App\Models\Part;
 use App\Models\Service;
 use App\Models\CarMileage;
@@ -44,13 +45,62 @@ class OrderServiceController extends Controller
         return response()->json($query->paginate(25));
     }
 
-    public function listAll()
+    /**
+     * Lista paginada de todas as OS da oficina.
+     *
+     * Filtro opcional `status`:
+     * - `open`: tudo que não está concluído nem cancelado;
+     * - `1` ou `1,6,7`: um ou mais IDs de orders_status.
+     */
+    public function listAll(Request $request)
     {
+        $request->validate([
+            'status' => ['nullable', 'string', 'regex:/^(open|\d+(,\d+){0,19})$/'],
+        ]);
+
         $query = OrderService::with(['vehicle.carModel.maker', 'type', 'status', 'parts', 'services', 'mileages', 'vehicle.client'])
             ->where('company_id', auth()->user()->company_id)
             ->orderBy('id', 'desc');
 
+        $status = $request->input('status');
+
+        if ($status === 'open') {
+            $query->whereNotIn('orders_status_id', OrderService::closedStatusIds());
+        } elseif ($status !== null && $status !== '') {
+            $query->whereIn('orders_status_id', array_map('intval', explode(',', $status)));
+        }
+
         return response()->json($query->paginate(25));
+    }
+
+    /**
+     * Quantidade de OS da oficina por status, para os botões de filtro da listagem.
+     * Uma única consulta agrupada, coberta pelo índice (company_id, orders_status_id, ...).
+     */
+    public function statusCounts()
+    {
+        // toBase(): sem passar pelo modelo, cujo acessor `total` (valor da OS) sobrescreveria a contagem
+        $counts = OrderService::where('company_id', auth()->user()->company_id)
+            ->toBase()
+            ->selectRaw('orders_status_id, COUNT(*) as orders_count')
+            ->groupBy('orders_status_id')
+            ->pluck('orders_count', 'orders_status_id')
+            ->map(fn ($count) => (int) $count);
+
+        $statuses = OrderStatus::orderBy('id')
+            ->get(['id', 'status'])
+            ->map(fn (OrderStatus $s) => [
+                'id' => $s->id,
+                'status' => $s->status,
+                'total' => $counts->get($s->id, 0),
+            ])
+            ->values();
+
+        return response()->json([
+            'all' => $counts->sum(),
+            'open' => $counts->except(OrderService::closedStatusIds())->sum(),
+            'statuses' => $statuses,
+        ]);
     }
 
     public function store(Request $request)

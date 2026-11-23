@@ -128,6 +128,7 @@ Route::prefix('v1')->group(function () {
         Route::post('client-change', [VehicleController::class, 'clientChange']);
         Route::apiResource('vehicles', VehicleController::class);
         Route::get('order-services/list-all', [OrderServiceController::class, 'listAll']);
+        Route::get('order-services/status-counts', [OrderServiceController::class, 'statusCounts']);
         Route::apiResource('order-services', OrderServiceController::class);
         Route::apiResource('incomes', IncomeController::class);
         Route::apiResource('expenses', ExpenseController::class);

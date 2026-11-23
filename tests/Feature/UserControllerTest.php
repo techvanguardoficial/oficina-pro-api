@@ -72,7 +72,7 @@ class UserControllerTest extends TestCase
         $response = $this->postJson('/api/v1/users', $userData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('email');
+            ->assertJsonValidationErrors('email', 'details');
     }
 
     public function test_cannot_create_user_without_required_fields(): void
@@ -86,7 +86,7 @@ class UserControllerTest extends TestCase
         $response = $this->postJson('/api/v1/users', $userData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email', 'password']);
+            ->assertJsonValidationErrors(['email', 'password'], 'details');
     }
 
     public function test_cannot_create_user_with_short_password(): void
@@ -102,7 +102,7 @@ class UserControllerTest extends TestCase
         $response = $this->postJson('/api/v1/users', $userData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('password');
+            ->assertJsonValidationErrors('password', 'details');
     }
 
     public function test_can_view_user(): void
