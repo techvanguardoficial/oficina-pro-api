@@ -70,6 +70,29 @@ class VehicleControllerTest extends TestCase
         ]);
     }
 
+    /** O ano é opcional: o modal envia year null e chassi/cor vazios quando não informados */
+    public function test_can_create_vehicle_without_year(): void
+    {
+        $this->authenticateUser();
+
+        $this->postJson('/api/v1/vehicles', [
+            'placa' => 'KXS9546',
+            'info' => '',
+            'chassis' => '',
+            'year' => null,
+            'color' => '',
+            'km' => 0,
+            'car_models_id' => $this->carModel->id,
+            'clients_id' => $this->client->id,
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('vehicles', [
+            'placa' => 'KXS9546',
+            'year' => null,
+            'company_id' => $this->company->id,
+        ]);
+    }
+
     public function test_cannot_create_vehicle_without_authentication(): void
     {
         $data = [
