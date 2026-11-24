@@ -46,6 +46,8 @@ class DashboardController extends Controller
             'totalClients'  => $count('clients'),
             'totalVehicles' => $count('vehicles'),
             'totalStock'    => $count('stocks'),
+            // A receber: OS concluídas (ou com sinal) que ainda têm saldo
+            'pendingPayment' => OrderService::pendingPaymentSummary($companyId),
         ]);
     }
 

@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\OrderTypeController;
 use App\Http\Controllers\Api\OrderStatusController;
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\OrderServiceController;
+use App\Http\Controllers\Api\OrderServicePaymentController;
 use App\Http\Controllers\Api\IncomeController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\CategoryController;
@@ -132,6 +133,12 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('vehicles', VehicleController::class);
         Route::get('order-services/list-all', [OrderServiceController::class, 'listAll']);
         Route::get('order-services/status-counts', [OrderServiceController::class, 'statusCounts']);
+        Route::get('order-services/pending-payment', [OrderServiceController::class, 'pendingPayment']);
+        Route::scopeBindings()->group(function () {
+            Route::get('order-services/{orderService}/payments', [OrderServicePaymentController::class, 'index']);
+            Route::post('order-services/{orderService}/payments', [OrderServicePaymentController::class, 'store']);
+            Route::delete('order-services/{orderService}/payments/{payment}', [OrderServicePaymentController::class, 'destroy']);
+        });
         Route::apiResource('order-services', OrderServiceController::class);
         Route::apiResource('incomes', IncomeController::class);
         Route::apiResource('expenses', ExpenseController::class);

@@ -458,6 +458,7 @@ class PortalController extends Controller
                 'status',
                 'type',
                 'mileages',
+                'payments',
                 'company:id,fantasy_name,name',
             ])
             ->orderBy('created_at', 'desc')
@@ -575,6 +576,9 @@ class PortalController extends Controller
             'info'     => $o->info,
             'oficina'  => $o->company?->fantasy_name ?? $o->company?->name ?? '',
             'total'    => $totalParts + $totalServices,
+            'paid'     => $o->paid_total,
+            'remaining' => max(0, round($totalParts + $totalServices - $o->paid_total, 2)),
+            'payment_status' => $o->payment_status,
             'parts'    => $o->parts
                 ->filter(fn($p) => trim((string) $p->description) !== '' && (float) $p->quantity > 0)
                 ->values()

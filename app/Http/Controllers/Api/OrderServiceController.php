@@ -14,6 +14,7 @@ use App\Models\CarMileage;
 use App\Models\Stock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class OrderServiceController extends Controller
 {
@@ -21,7 +22,7 @@ class OrderServiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = OrderService::with(['vehicle.carModel.maker', 'vehicle.client', 'type', 'status', 'parts', 'services', 'mileages'])
+        $query = OrderService::with(['vehicle.carModel.maker', 'vehicle.client', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
             ->where('company_id', auth()->user()->company_id)
             ->orderBy('id', 'desc');
 
@@ -58,7 +59,7 @@ class OrderServiceController extends Controller
             'status' => ['nullable', 'string', 'regex:/^(open|\d+(,\d+){0,19})$/'],
         ]);
 
-        $query = OrderService::with(['vehicle.carModel.maker', 'type', 'status', 'parts', 'services', 'mileages', 'vehicle.client'])
+        $query = OrderService::with(['vehicle.carModel.maker', 'type', 'status', 'parts', 'services', 'mileages', 'payments', 'vehicle.client'])
             ->where('company_id', auth()->user()->company_id)
             ->orderBy('id', 'desc');
 
@@ -103,6 +104,34 @@ class OrderServiceController extends Controller
         ]);
     }
 
+    /**
+     * OS com pagamento pendente (concluídas, ou com sinal pago, que ainda têm saldo).
+     * Vencimento mais próximo primeiro; sem vencimento por último.
+     *
+     * GET /order-services/pending-payment?overdue=1
+     * Resposta: paginação padrão + `summary` { orders, receivable, overdueOrders, overdue }.
+     */
+    public function pendingPayment(Request $request)
+    {
+        $request->validate(['overdue' => 'nullable|boolean']);
+
+        $companyId = auth()->user()->company_id;
+
+        $orders = OrderService::with(['vehicle.carModel.maker', 'vehicle.client', 'type', 'status', 'parts', 'services', 'payments'])
+            ->where('order_services.company_id', $companyId)
+            ->pendingPayment()
+            ->when($request->boolean('overdue'), fn ($q) => $q->where('payment_due_date', '<', now()->toDateString()))
+            ->orderByRaw('payment_due_date IS NULL')
+            ->orderBy('payment_due_date')
+            ->orderByDesc('id')
+            ->paginate(25);
+
+        return response()->json([
+            ...$orders->toArray(),
+            'summary' => OrderService::pendingPaymentSummary($companyId),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $limitCheck = $this->checkPlanLimit('orders');
@@ -122,6 +151,7 @@ class OrderServiceController extends Controller
             'orders_types_id' => 'required|integer|exists:orders_types,id',
             'orders_status_id' => 'required|integer|exists:orders_status,id',
             'info' => 'nullable|string|max:1000',
+            'payment_due_date' => 'nullable|date',
             'mileage' => 'nullable|numeric|min:0',
             'parts' => 'nullable|array',
             'parts.*.description' => 'required_with:parts|string|max:255',
@@ -155,6 +185,7 @@ class OrderServiceController extends Controller
                 'orders_types_id' => $validated['orders_types_id'],
                 'orders_status_id' => $validated['orders_status_id'],
                 'info' => $validated['info'] ?? null,
+                'payment_due_date' => $validated['payment_due_date'] ?? null,
             ]);
 
             foreach ($validated['parts'] ?? [] as $part) {
@@ -200,7 +231,7 @@ class OrderServiceController extends Controller
 
         return response()->json([
             'message' => 'Ordem de serviço criada com sucesso',
-            'order' => $order->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages']),
+            'order' => $order->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages', 'payments']),
         ], 201);
     }
 
@@ -209,7 +240,7 @@ class OrderServiceController extends Controller
         $this->authorizeCompany($orderService);
 
         return response()->json(
-            $orderService->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages'])
+            $orderService->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
         );
     }
 
@@ -222,6 +253,7 @@ class OrderServiceController extends Controller
             'orders_types_id'          => 'sometimes|integer|exists:orders_types,id',
             'orders_status_id'         => 'sometimes|integer|exists:orders_status,id',
             'info'                     => 'nullable|string|max:1000',
+            'payment_due_date'         => 'nullable|date',
             'mileage'                  => 'nullable|numeric|min:0',
             'parts'                    => 'nullable|array',
             'parts.*.description'      => 'required_with:parts|string|max:255',
@@ -245,6 +277,10 @@ class OrderServiceController extends Controller
                 'orders_types_id'  => $validated['orders_types_id']  ?? $orderService->orders_types_id,
                 'orders_status_id' => $validated['orders_status_id'] ?? $orderService->orders_status_id,
                 'info'             => $validated['info']              ?? $orderService->info,
+                // Enviar null limpa a data combinada; não enviar mantém
+                'payment_due_date' => array_key_exists('payment_due_date', $validated)
+                    ? $validated['payment_due_date']
+                    : $orderService->payment_due_date,
             ]);
 
             // Substitui peças: devolve estoque das antigas, dá baixa nas novas
@@ -293,6 +329,15 @@ class OrderServiceController extends Controller
                 }
             }
 
+            // O total não pode ficar abaixo do que o cliente já pagou
+            $fresh = OrderService::with(['parts', 'services', 'payments'])->find($orderService->id);
+            if ($fresh->paid_total > $fresh->total + OrderService::PAYMENT_EPSILON) {
+                throw ValidationException::withMessages([
+                    'parts' => 'O total da OS (R$ ' . number_format($fresh->total, 2, ',', '.') . ') ficaria abaixo do valor já pago'
+                        . ' (R$ ' . number_format($fresh->paid_total, 2, ',', '.') . '). Remova um pagamento antes.',
+                ]);
+            }
+
             // Registra nova leitura de KM se fornecida
             if (!empty($validated['mileage'])) {
                 CarMileage::create([
@@ -304,8 +349,9 @@ class OrderServiceController extends Controller
             }
         });
 
+        // load() recarrega as relações trocadas dentro da transação
         return response()->json(
-            $orderService->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages'])
+            $orderService->refresh()->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
         );
     }
 

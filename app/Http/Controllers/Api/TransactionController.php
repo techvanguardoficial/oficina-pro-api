@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Income;
 use App\Models\Expense;
-use App\Models\OrderService;
-use App\Models\OrderStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 class TransactionController extends Controller
 {
     /**
-     * Listar todas as transações (receitas manuais + ordens concluídas + despesas) de um período
+     * Listar todas as transações (receitas manuais + pagamentos de OS + despesas) de um período
      * para geração de extrato PDF no frontend.
      */
     public function list(Request $request)
@@ -46,31 +44,22 @@ class TransactionController extends Controller
             'source'      => 'manual',
         ]);
 
-        // Receitas de ordens concluídas (filtradas pela data de conclusão)
-        $completedStatusId = $this->completedStatusId();
-        $orderIncomes = collect();
-
-        if ($completedStatusId) {
-            $orders = OrderService::where('company_id', $companyId)
-                ->where('orders_status_id', $completedStatusId)
-                ->whereBetween('completed_at', [$start, $end])
-                ->with(['parts', 'services', 'vehicle'])
-                ->orderBy('completed_at')
-                ->get();
-
-            $orderIncomes = $orders->map(function ($order) {
-                $placa = $order->vehicle->placa ?? $order->placa ?? '';
-                $total = $order->total ?? 0;
-                return [
-                    'id'          => 'order_' . $order->id,
-                    'type'        => 'Receita',
-                    'description' => "OS #{$order->id}" . ($placa ? " — {$placa}" : ''),
-                    'amount'      => (float) $total,
-                    'date'        => $order->completed_at ? $order->completed_at->toDateString() : now()->toDateString(),
-                    'source'      => 'order',
-                ];
-            });
-        }
+        // Receitas de OS: cada pagamento conta na data em que foi pago
+        $orderIncomes = $this->orderPaymentsQuery($companyId, $start->toDateString(), $end->toDateString())
+            ->leftJoin('vehicles as v', 'v.id', '=', 'os.vehicle_id')
+            ->select('op.id', 'op.amount', 'op.paid_at', 'os.id as order_id', 'v.placa')
+            ->orderBy('op.paid_at')
+            ->orderBy('op.id')
+            ->get()
+            ->map(fn ($p) => [
+                'id'          => 'payment_' . $p->id,
+                'type'        => 'Receita',
+                'description' => "OS #{$p->order_id}" . ($p->placa ? " — {$p->placa}" : ''),
+                'amount'      => (float) $p->amount,
+                'date'        => $p->paid_at,
+                'source'      => 'order',
+                'order_id'    => (int) $p->order_id,
+            ]);
 
         // Despesas
         $expensesRaw = Expense::where('company_id', $companyId)
@@ -122,9 +111,9 @@ class TransactionController extends Controller
             ->whereBetween('date', [$periodStart, $periodEnd])
             ->sum('value');
 
-        $completedOrders = array_sum($this->completedOrdersByDay(
-            $companyId, $this->completedStatusId(), $periodStart->toDateString(), $periodEnd->toDateString()));
-        $totalIncomes    = $incomes + $completedOrders;
+        $orderPayments = array_sum($this->orderPaymentsByDay(
+            $companyId, $periodStart->toDateString(), $periodEnd->toDateString()));
+        $totalIncomes  = $incomes + $orderPayments;
 
         $expenses = Expense::where('company_id', $companyId)
             ->whereBetween('date', [$periodStart, $periodEnd])
@@ -140,7 +129,9 @@ class TransactionController extends Controller
             'balance'  => (float) ($totalIncomes - $expenses),
             'breakdown' => [
                 'incomes_from_records'         => (float) $incomes,
-                'incomes_from_completed_orders' => (float) $completedOrders,
+                'incomes_from_order_payments'  => (float) $orderPayments,
+                // Nome antigo, mantido para o frontend: hoje é a soma dos pagamentos de OS
+                'incomes_from_completed_orders' => (float) $orderPayments,
             ],
         ]);
     }
@@ -163,10 +154,9 @@ class TransactionController extends Controller
         $from = min($weekStart, $yearStart, $chartStart);
         $to   = $today;
 
-        $completedStatusId = $this->completedStatusId();
         $incomeByDay  = $this->dailyTotals(Income::where('company_id', $companyId), 'date', 'value', $from, $to);
         $expenseByDay = $this->dailyTotals(Expense::where('company_id', $companyId), 'date', 'value', $from, $to);
-        $ordersByDay  = $this->completedOrdersByDay($companyId, $completedStatusId, $from, $to);
+        $ordersByDay  = $this->orderPaymentsByDay($companyId, $from, $to);
 
         $sumRange = function (array $byDay, string $start) use ($to) {
             $total = 0.0;
@@ -212,11 +202,6 @@ class TransactionController extends Controller
         ]);
     }
 
-    private function completedStatusId(): ?int
-    {
-        return OrderService::completedStatusIds()[0] ?? null;
-    }
-
     /** Soma de $valueCol agrupada por dia (Y-m-d => float) entre $from e $to. */
     private function dailyTotals($query, string $dateCol, string $valueCol, string $from, string $to): array
     {
@@ -228,38 +213,25 @@ class TransactionController extends Controller
             ->all();
     }
 
-    /**
-     * Receita das OS concluídas por dia (data = completed_at), calculada no banco
-     * com a mesma regra de OrderService::total:
-     * peças = (unit_price ?? price ?? 0) × max(1, quantidade); serviços = price.
-     */
-    private function completedOrdersByDay(int $companyId, ?int $statusId, string $from, string $to): array
+    /** Pagamentos de OS (não excluídas) entre $from e $to, por data de pagamento. */
+    private function orderPaymentsQuery(int $companyId, string $from, string $to)
     {
-        if (!$statusId) return [];
+        return DB::table('order_service_payments as op')
+            ->join('order_services as os', 'os.id', '=', 'op.order_service_id')
+            ->where('op.company_id', $companyId)
+            ->whereNull('op.deleted_at')
+            ->whereNull('os.deleted_at')
+            ->whereBetween('op.paid_at', [$from, $to]);
+    }
 
-        $orders = DB::table('order_services')
-            ->where('company_id', $companyId)
-            ->where('orders_status_id', $statusId)
-            ->whereNull('deleted_at')
-            ->whereBetween('completed_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
-            ->select('id', DB::raw('DATE(completed_at) as day'));
-
-        $parts = DB::table('parts as p')
-            ->joinSub($orders, 'o', 'o.id', '=', 'p.orders_id')
-            ->whereNull('p.deleted_at')
-            ->selectRaw("o.day, SUM(COALESCE(p.unit_price, p.price, 0) * GREATEST(1, CAST(COALESCE(NULLIF(p.quantity, ''), '1') AS DECIMAL(12,3)))) as total")
-            ->groupBy('o.day');
-
-        $services = DB::table('services as s')
-            ->joinSub($orders, 'o', 'o.id', '=', 's.orders_id')
-            ->whereNull('s.deleted_at')
-            ->selectRaw('o.day, SUM(COALESCE(s.price, 0)) as total')
-            ->groupBy('o.day');
-
-        $byDay = [];
-        foreach ($parts->unionAll($services)->get() as $row) {
-            $byDay[$row->day] = ($byDay[$row->day] ?? 0) + (float) $row->total;
-        }
-        return $byDay;
+    /** Receita das OS por dia (Y-m-d => float): soma dos pagamentos pela data paga. */
+    private function orderPaymentsByDay(int $companyId, string $from, string $to): array
+    {
+        return $this->orderPaymentsQuery($companyId, $from, $to)
+            ->selectRaw('op.paid_at as day, SUM(op.amount) as total')
+            ->groupBy('op.paid_at')
+            ->pluck('total', 'day')
+            ->mapWithKeys(fn ($v, $day) => [substr((string) $day, 0, 10) => (float) $v])
+            ->all();
     }
 }
