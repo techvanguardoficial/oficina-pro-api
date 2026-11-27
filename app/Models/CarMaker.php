@@ -20,6 +20,15 @@ class CarMaker extends Model
         'updated_at' => 'datetime',
     ];
 
+    /**
+     * Cadastro compartilhado entre oficinas: grava sem espaços sobrando e em
+     * maiúsculas (padrão da base), para "Kia", " kia " e "KIA" serem a mesma.
+     */
+    public static function normalizeName(string $name): string
+    {
+        return mb_strtoupper(trim(preg_replace('/\s+/u', ' ', $name)), 'UTF-8');
+    }
+
     // Relationships
     public function models(): HasMany
     {

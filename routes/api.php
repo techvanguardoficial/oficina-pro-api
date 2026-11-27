@@ -129,6 +129,9 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('car-makers', CarMakerController::class)->only(['index', 'show']);
         Route::apiResource('car-models', CarModelController::class)->only(['index', 'show']);
         Route::get('car-makers/{makerId}/models', [CarModelController::class, 'getByMaker']);
+        // Qualquer oficina pode cadastrar fabricante e modelo (sem editar/excluir: o dado é de todos)
+        Route::post('car-makers', [CarMakerController::class, 'store']);
+        Route::post('car-makers/{carMaker}/models', [CarModelController::class, 'storeForMaker']);
         Route::post('client-change', [VehicleController::class, 'clientChange']);
         Route::apiResource('vehicles', VehicleController::class);
         Route::get('order-services/list-all', [OrderServiceController::class, 'listAll']);

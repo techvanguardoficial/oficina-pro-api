@@ -115,6 +115,8 @@ class OrderServicePaymentController extends Controller
             'remaining'        => $order->remaining,
             'payment_status'   => $order->payment_status,
             'payment_due_date' => $order->payment_due_date?->toDateString(),
+            // Sugestão de data para o primeiro pagamento: o dia em que a OS foi concluída
+            'completed_at' => $order->completed_at?->toIso8601String(),
             'payments'         => $order->payments,
         ];
     }

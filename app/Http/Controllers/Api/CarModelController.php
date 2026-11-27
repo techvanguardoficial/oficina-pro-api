@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CarModel;
 use App\Models\CarMaker;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CarModelController extends Controller
 {
@@ -33,16 +34,31 @@ class CarModelController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Cadastra modelo na fabricante. Compartilhado entre oficinas, como a fabricante.
      */
-    public function store(Request $request)
+    public function storeForMaker(Request $request, CarMaker $carMaker)
     {
+        if (is_string($request->input('model'))) {
+            $request->merge(['model' => CarMaker::normalizeName($request->input('model'))]);
+        }
+
         $validated = $request->validate([
-            'model' => 'required|string|max:100',
-            'car_makers_id' => 'required|exists:car_makers,id',
+            'model' => [
+                'required', 'string', 'max:100',
+                Rule::unique('car_models', 'model')
+                    ->where('car_makers_id', $carMaker->id)
+                    ->whereNull('deleted_at'),
+            ],
+        ], [
+            'model.required' => 'Informe o nome do modelo.',
+            'model.max' => 'O nome do modelo pode ter no máximo 100 caracteres.',
+            'model.unique' => "Esse modelo já está cadastrado em {$carMaker->manufacturer}.",
         ]);
 
-        $carModel = CarModel::create($validated);
+        $carModel = CarModel::create([
+            'model' => $validated['model'],
+            'car_makers_id' => $carMaker->id,
+        ]);
 
         return response()->json($carModel, 201);
     }

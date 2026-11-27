@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Company;
@@ -21,6 +22,7 @@ class OrderService extends Model
         'orders_types_id',
         'orders_status_id',
         'payment_due_date',
+        'completed_at',
     ];
 
     /** Saldo de pagamento sempre vem junto da OS. */
@@ -57,6 +59,15 @@ class OrderService extends Model
     public static function closedStatusIds(): array
     {
         return array_values(array_unique([...self::completedStatusIds(), ...self::canceledStatusIds()]));
+    }
+
+    /**
+     * Data de conclusão informada pelo usuário (Y-m-d, no fuso dele).
+     * Grava ao meio-dia UTC para o dia não virar em nenhum fuso do Brasil.
+     */
+    public static function completedAtFromDate(string $ymd): Carbon
+    {
+        return Carbon::createFromFormat('Y-m-d', $ymd, 'UTC')->setTime(12, 0);
     }
 
     protected static function booted(): void

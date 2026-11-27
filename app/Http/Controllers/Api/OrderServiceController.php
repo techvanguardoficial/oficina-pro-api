@@ -152,6 +152,8 @@ class OrderServiceController extends Controller
             'orders_status_id' => 'required|integer|exists:orders_status,id',
             'info' => 'nullable|string|max:1000',
             'payment_due_date' => 'nullable|date',
+            // Dia em que a OS foi concluída (só vale com status concluído; sem ele, hoje)
+            'completed_at' => 'nullable|date_format:Y-m-d|before_or_equal:today',
             'mileage' => 'nullable|numeric|min:0',
             'parts' => 'nullable|array',
             'parts.*.description' => 'required_with:parts|string|max:255',
@@ -186,6 +188,7 @@ class OrderServiceController extends Controller
                 'orders_status_id' => $validated['orders_status_id'],
                 'info' => $validated['info'] ?? null,
                 'payment_due_date' => $validated['payment_due_date'] ?? null,
+                'completed_at' => $this->completedAtFor((int) $validated['orders_status_id'], $validated),
             ]);
 
             foreach ($validated['parts'] ?? [] as $part) {
@@ -244,6 +247,15 @@ class OrderServiceController extends Controller
         );
     }
 
+    /** Data de conclusão pedida, só quando o status (resultante) é concluído. */
+    private function completedAtFor(int $statusId, array $validated): ?\Illuminate\Support\Carbon
+    {
+        if (empty($validated['completed_at'])) return null;
+        if (!in_array($statusId, OrderService::completedStatusIds(), true)) return null;
+
+        return OrderService::completedAtFromDate($validated['completed_at']);
+    }
+
     public function update(Request $request, OrderService $orderService)
     {
         $this->authorizeCompany($orderService);
@@ -254,6 +266,7 @@ class OrderServiceController extends Controller
             'orders_status_id'         => 'sometimes|integer|exists:orders_status,id',
             'info'                     => 'nullable|string|max:1000',
             'payment_due_date'         => 'nullable|date',
+            'completed_at'             => 'nullable|date_format:Y-m-d|before_or_equal:today',
             'mileage'                  => 'nullable|numeric|min:0',
             'parts'                    => 'nullable|array',
             'parts.*.description'      => 'required_with:parts|string|max:255',
@@ -272,6 +285,12 @@ class OrderServiceController extends Controller
 
         DB::transaction(function () use ($validated, $orderService, $request) {
             $companyId = $request->user()->company_id;
+
+            $statusId = (int) ($validated['orders_status_id'] ?? $orderService->orders_status_id);
+            // Data informada troca a conclusão; sem data, o model usa agora ao concluir
+            if ($completedAt = $this->completedAtFor($statusId, $validated)) {
+                $orderService->completed_at = $completedAt;
+            }
 
             $orderService->update([
                 'orders_types_id'  => $validated['orders_types_id']  ?? $orderService->orders_types_id,

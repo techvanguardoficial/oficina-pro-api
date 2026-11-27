@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CarMaker;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CarMakerController extends Controller
 {
@@ -18,17 +19,29 @@ class CarMakerController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Cadastra fabricante. O cadastro é compartilhado: qualquer oficina vê.
+     * Por isso não há edição nem exclusão pela API.
      */
     public function store(Request $request)
     {
+        if (is_string($request->input('manufacturer'))) {
+            $request->merge(['manufacturer' => CarMaker::normalizeName($request->input('manufacturer'))]);
+        }
+
         $validated = $request->validate([
-            'manufacturer' => 'required|string|max:255|unique:car_makers',
+            'manufacturer' => [
+                'required', 'string', 'max:100',
+                Rule::unique('car_makers', 'manufacturer')->whereNull('deleted_at'),
+            ],
+        ], [
+            'manufacturer.required' => 'Informe o nome da fabricante.',
+            'manufacturer.max' => 'O nome da fabricante pode ter no máximo 100 caracteres.',
+            'manufacturer.unique' => 'Essa fabricante já está cadastrada.',
         ]);
 
         $carMaker = CarMaker::create($validated);
 
-        return response()->json($carMaker, 201);
+        return response()->json($carMaker->load('models'), 201);
     }
 
     /**
