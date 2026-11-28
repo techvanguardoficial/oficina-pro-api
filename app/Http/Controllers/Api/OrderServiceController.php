@@ -22,7 +22,7 @@ class OrderServiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = OrderService::with(['vehicle.carModel.maker', 'vehicle.client', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
+        $query = OrderService::with(['vehicle.carModel.maker', 'vehicle.client.phone', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
             ->where('company_id', auth()->user()->company_id)
             ->orderBy('id', 'desc');
 
@@ -59,7 +59,7 @@ class OrderServiceController extends Controller
             'status' => ['nullable', 'string', 'regex:/^(open|\d+(,\d+){0,19})$/'],
         ]);
 
-        $query = OrderService::with(['vehicle.carModel.maker', 'type', 'status', 'parts', 'services', 'mileages', 'payments', 'vehicle.client'])
+        $query = OrderService::with(['vehicle.carModel.maker', 'type', 'status', 'parts', 'services', 'mileages', 'payments', 'vehicle.client.phone'])
             ->where('company_id', auth()->user()->company_id)
             ->orderBy('id', 'desc');
 
@@ -117,7 +117,7 @@ class OrderServiceController extends Controller
 
         $companyId = auth()->user()->company_id;
 
-        $orders = OrderService::with(['vehicle.carModel.maker', 'vehicle.client', 'type', 'status', 'parts', 'services', 'payments'])
+        $orders = OrderService::with(['vehicle.carModel.maker', 'vehicle.client.phone', 'type', 'status', 'parts', 'services', 'payments'])
             ->where('order_services.company_id', $companyId)
             ->pendingPayment()
             ->when($request->boolean('overdue'), fn ($q) => $q->where('payment_due_date', '<', now()->toDateString()))
@@ -234,7 +234,7 @@ class OrderServiceController extends Controller
 
         return response()->json([
             'message' => 'Ordem de serviço criada com sucesso',
-            'order' => $order->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages', 'payments']),
+            'order' => $order->load(['vehicle.carModel.maker', 'vehicle.client.phone', 'type', 'status', 'parts', 'services', 'mileages', 'payments']),
         ], 201);
     }
 
@@ -243,7 +243,7 @@ class OrderServiceController extends Controller
         $this->authorizeCompany($orderService);
 
         return response()->json(
-            $orderService->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
+            $orderService->load(['vehicle.carModel.maker', 'vehicle.client.phone', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
         );
     }
 
@@ -370,7 +370,7 @@ class OrderServiceController extends Controller
 
         // load() recarrega as relações trocadas dentro da transação
         return response()->json(
-            $orderService->refresh()->load(['vehicle', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
+            $orderService->refresh()->load(['vehicle.carModel.maker', 'vehicle.client.phone', 'type', 'status', 'parts', 'services', 'mileages', 'payments'])
         );
     }
 
